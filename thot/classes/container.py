@@ -3,21 +3,17 @@
 
 # # Container
 
-# In[2]:
+# In[ ]:
 
 
-from datetime import datetime
-
-from .base_object import BaseObject
-from .role     import Role
-from .metadata import Metadata
-from .script   import ScriptAssociation
+from .resource import Resource
+from .script import ScriptAssociation
 
 
 # In[ ]:
 
 
-class Container( BaseObject ):
+class Container( Resource ):
     """
     A Container.
     """
@@ -29,18 +25,10 @@ class Container( BaseObject ):
         :param **kwargs: Initial property values.
         """
         defaults = {
-            'created':      datetime.now(),
-            'type':         None,
-            'name':         None,
-            'description':  None,
             'parent':       None,
-            'roles':        [],
-            'tags':         [],
-            'notes':        [],
             'children':     [],
             'assets':       [],
-            'scripts':      [],
-            'metadata':     {}
+            'scripts':      []
         }
         
         super().__init__( kwargs, defaults )

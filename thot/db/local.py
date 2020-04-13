@@ -3,20 +3,23 @@
 
 # # Local Database
 
-# In[25]:
+# In[ ]:
 
 
 import os
+import re
 import json
 from datetime import datetime
 from glob import glob
 from functools import partial
 from collections.abc import Mapping
 
+from ..classes.resource import Resource, ResourceJSONEncoder
+
 
 # ## Helper Functions
 
-# In[26]:
+# In[ ]:
 
 
 def _load_json( path ):
@@ -37,7 +40,7 @@ def _load_json( path ):
 
 # ## Document Objects
 
-# In[151]:
+# In[ ]:
 
 
 class LocalObject( Mapping ):
@@ -119,7 +122,7 @@ class LocalObject( Mapping ):
         :param parent: Parent Object, or None if root. [Default: None]
         """
         self.__path = os.path.normpath( path )
-        self.__parent = parent._id if ( parent is not None ) else None
+        self.__parent = parent
         self.__object_file = self.get_object_file( self.path )
         
         # get properties
@@ -132,7 +135,7 @@ class LocalObject( Mapping ):
         self.__own_metadata_keys = self.meta[ 'metadata' ].keys()
             
         # default name
-        if 'name' not in self.meta:
+        if ( 'name' not in self.meta ) or ( not self.meta[ 'name' ] ):
             self.meta[ 'name' ] = os.path.basename( self.path )
         
         # inherit metadata from project parents
@@ -182,7 +185,10 @@ class LocalObject( Mapping ):
     
     @property
     def parent( self ):
-        return self.__parent
+        if self.__parent:
+            return self.__parent._id
+        
+        return None
     
     
     @property
@@ -193,6 +199,14 @@ class LocalObject( Mapping ):
     @property
     def notes( self ):
         return self.__notes
+    
+    
+    @property
+    def _object_file_path( self ):
+        """
+        Returns the path to the object file for the object.
+        """
+        return os.path.join( self._id, '_{}.json'.format( self.kind ) )
     
     
     def get_project_root( self ):
@@ -234,6 +248,28 @@ class LocalObject( Mapping ):
         return inherited
     
     
+    def _parse_path( self, path ):
+        """
+        Returns the parsed path accounting for `root:` directive.
+        """
+        root_pattern = '^(root|ROOT):'
+        
+        if re.search( root_pattern, path ):
+            # root in path, absolute path
+            # get root_path
+            root_path = self.get_project_root()
+            path = re.sub( root_pattern, root_path, path )
+            path = os.path.normpath( path )
+        
+        else:
+            # root not in path, relative path
+            path = os.path.normpath( os.path.join( 
+                self._id, path 
+            ) )
+            
+        return path
+    
+    
     def __getitem__( self, item ):
         if item is '_id':
             return self.path
@@ -264,7 +300,7 @@ class LocalObject( Mapping ):
         return count
 
 
-# In[147]:
+# In[ ]:
 
 
 class LocalAsset( LocalObject ):
@@ -280,9 +316,7 @@ class LocalAsset( LocalObject ):
         super().__init__( path, parent )
 
         # convert asset file to absolute path
-        self.meta[ 'file' ] = os.path.normpath(
-            os.path.join( self._id, self.meta[ 'file' ] )
-        )
+        self.meta[ 'file' ] = self._parse_path( self.meta[ 'file' ] )
         
         
     @property
@@ -325,11 +359,18 @@ class LocalContainer( LocalObject ):
          
         # get scripts
         try:
-            self.__scripts = _load_json( self._scripts_path() )
+            scripts = _load_json( self._scripts_path() )
             
         except FileNotFoundError as err:
             # scripts file does not exist
-            self.__scripts = []
+            scripts = []
+            
+        for index, script in enumerate( scripts ):
+            # resolve script path
+            script[ 'script' ] = self._parse_path( script[ 'script' ] )
+            scripts[ index ] = script
+            
+        self.__scripts = scripts
             
     
     @property
@@ -362,9 +403,9 @@ class LocalContainer( LocalObject ):
     
     def _scripts_path( self ):
         """
-        :returns: Path to the scritps file.
+        :returns: Path to the scripts file.
         :raises FileNotFoundError: If file does not exist. 
-            Expected path in 'filename' attriubte.
+            Expected path in 'filename' attribute.
         """
         path = os.path.join( 
             self.path, self._object_file_format.format( 'scripts' ) 
@@ -420,7 +461,7 @@ class LocalContainer( LocalObject ):
 
 # ## DB Objects
 
-# In[148]:
+# In[ ]:
 
 
 class LocalCollection():
@@ -539,8 +580,9 @@ class LocalCollection():
         """
         Insert a new object into the database.
         
-        :param path: Path of the object.
+        :param path: Path of the object relative to the root.
         :param properties: Properties of the object. [Default: {}]
+        :returns: New object.
         """
         if not os.path.exists( path ):
             # create folder for object
@@ -560,21 +602,24 @@ class LocalCollection():
             
         # create object file
         of = LocalObject._object_file_format.format( self.kind )
-        of_path = os.path.join( path, of )
+        of_path = os.path.normpath( os.path.join( 
+            self.root._id, path, of 
+        ) )
         
-        with open( of_path, 'w' ) as f:
-            json.dump( properties, f, indent = 4 )
+        self._to_json( of_path, properties )
         
         # Reinitialize to incorporate new object
         # TODO [1]: add object to self
         self.__init__( self.root._id, self.kind )
+        
+        return 
 
         
     def replace_one( self, path, properties = {}, upsert = False ):
         """
         Replaces an object.
         
-        :param path: Path of the object.
+        :param path: Path of the object relative to the root.
         :param properties: Properties of the object. [Default: {}]
         :param upsert: Insert new document if it doesn't yet exist.
             [Default: False]
@@ -596,17 +641,32 @@ class LocalCollection():
             
         # create object property file
         of = LocalObject._object_file_format.format( self.kind )
-        of_path = os.path.join( path, of )
         
-        with open( of_path, 'w' ) as f:
-            json.dump( properties, f, indent = 4 )
+        of_path = os.path.normpath( os.path.join( 
+            self.root._id, path, of 
+        ) )
+        
+        self._to_json( of_path, properties )
             
         # Reinitialize to incorporate new object
         # TODO [1]: add object to self
         self.__init__( self.root._id, self.kind )
+        
+        
+    def _to_json( self, path, properties ):
+        """
+        Writes properties as JSON to a file.
+        
+        :param path: Path for the JSON file.
+        :param properties: The dicitonary or BaseObject to save.
+        """
+        json_encoder = ResourceJSONEncoder if isinstance( properties, Resource ) else None
+
+        with open( path, 'w' ) as f:
+            json.dump( properties, f, cls = json_encoder, indent = 4 )
 
 
-# In[149]:
+# In[ ]:
 
 
 class LocalDB():
@@ -642,14 +702,14 @@ class LocalDB():
 
 # # Work
 
-# In[150]:
+# In[ ]:
 
 
 # root = os.path.join( os.getcwd(), '../../../_tests/projects/inclined-plane/deg20' )
 # db = LocalDB( root )
 
 
-# In[126]:
+# In[ ]:
 
 
 # for asset in db.assets.find():
@@ -657,20 +717,20 @@ class LocalDB():
 #         print( asset.meta[ 'metadata' ] )
 
 
-# In[127]:
+# In[ ]:
 
 
 # db.containers.replace_one( os.path.join( root, 'test' ), { 'type': 'test' }, upsert = True )
 
 
-# In[144]:
+# In[ ]:
 
 
 # for c in db.containers.find():
 #     print( c.meta )
 
 
-# In[145]:
+# In[ ]:
 
 
 # for c in db.assets.find():

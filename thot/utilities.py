@@ -3,7 +3,7 @@
 
 # # Project Utilities
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -11,10 +11,11 @@ import json
 
 from .classes.base_object import BaseObjectJSONEncoder
 from .classes.script import ScriptAssociation
+from .classes.asset import Asset
 from .db import local
 
 
-# In[5]:
+# In[ ]:
 
 
 class ThotUtilities():
@@ -88,7 +89,7 @@ class ThotUtilities():
         
         :param scripts: List of or single scripts to remove.
         :param search: A dictionary to filter containers.
-        :returns: List of affected containers.
+        :returns: List of effected containers.
         """
         if not isinstance( scripts, list ):
             # single script passed in
@@ -131,7 +132,7 @@ class ThotUtilities():
         
         :param scripts: List of or single scripts.
         :param search: A dictionary to filter containers.
-        :returns: List of affected containers.
+        :returns: List of effected containers.
         """
         if not isinstance( scripts, list ):
             # single script passed in
@@ -153,11 +154,117 @@ class ThotUtilities():
                 json.dump( scripts, f, cls = BaseObjectJSONEncoder, indent = 4 )
                 
         return containers
+    
+    
+    def add_assets( self, assets, search, overwrite = False ):
+        """
+        Add Assets to the matched Containers.
+        
+        :param assets: Dictionary keyed by ids with Asset values.
+        :param search: Dictionary to filter containers.
+        :param overwrite: Whether to overwrite an already existing Asset. [Default: False]
+        :returns: List of modified Assets.
+        """
+        # create assets
+        assets = { _id: Asset( **asset ) for _id, asset in assets.items() } 
+        
+        new_assets = []
+        containers = self._db.containers.find( search )
+        for container in containers: 
+            asset_added = False
+            container_assets = [ asset._id for asset in container.assets ]
+            
+            for _id, asset in assets.items():
+                asset_id = os.path.join( container._id, _id )
+                
+                if asset_id in container_assets:
+                    # asset already in container
+                    if ( overwrite ):
+                        # replace with new asset
+                        self._db.assets.replace_one( _id, asset )
+                        asset_added = True
+                    
+                else:
+                    # script does not exist yet
+                    self._db.assets.insert_one( asset_id, asset )
+                    asset_added = True
+                    
+                if asset_added:
+                    new_assets.append( new_asset )
+                    
+        return modified_containers
+        
+        
+    def remove_assets( self, assets, search = None, removed_name = '_asset_removed' ):
+        """
+        Remove Assets matching the given criteria.
+        This does not delete anything, but only changes 
+        the name of the _asset.json file to <removed_name>.json.
+        
+        :param assets: Dictionary of criteria to match Assets.
+        :param search: Dictionary of criteria to match Containers. [Default: None]
+        :param removed_name: Name of file to move _assest.json to. [Default: '_asset_removed']
+        :returns: List of removed Assets.
+        """
+        assets = self._db.assets.find( assets )
+        
+        if search is not None:
+            # filter assets by container
+            asset_ids = [ asset._id for asset in assets ]
+            
+            remove_assets = []
+            containers = self._db.containers.find( search )
+            for container in containers:
+                remove_assets += filter( 
+                    lambda asset: ( asset._id in asset_ids ),
+                    container.assets
+                )
+                    
+            assets = remove_assets
+        
+        for asset in assets:
+            # modify asset names to remove
+            object_path = asset._object_file_path
+            ( head, tail ) = os.path.split( object_path )
+            removed_path = os.path.join( head, removed_name + '.json' )
+            
+            os.rename( object_path, removed_path )
+        
+        return assets
+    
+    
+    def print_tree( self, properties = None, root = None, level = 0 ):
+        """
+        Prints the tree.
+        
+        :param properties: List of properties to print. [Default: None]
+        :param root: Id of the root of the tree to print, or None to use database root.
+            [Default: None]
+        :param level: The current tree level. [Default: 0]
+        """
+        
+        if root is None:
+            root = self._db.containers.find_one( { '_id':  self._db.root } )
+        
+        # DFT printing
+        out = '\t'* level # indent 
+        out += root._id # print id
+        
+        if properties is not None:
+            # add properties
+            props = { prop: root[ prop ] for prop in properties }
+            out += ' {}'.format( props )
+            
+        print( out )
+        
+        # recurse on children
+        for child in root.children:
+            self.print_tree( properties = properties, root = child, level = level + 1 )
 
 
 # ## Main
 
-# In[3]:
+# In[ ]:
 
 
 if __name__ == '__main__':
@@ -190,7 +297,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--scripts',
         type = str,
-        help = 'List of scripts to add. Format depends on function.'
+        help = 'Scripts object. Format depends on function.'
+    )
+    
+    parser.add_argument(
+        '--assets',
+        type = str,
+        help = 'Assets object. Format depends on function.'
     )
     
     parser.add_argument(
@@ -199,9 +312,15 @@ if __name__ == '__main__':
         help = 'Allows overwriting objects if they already exist.'
     )
     
+    parser.add_argument(
+        '--properties',
+        type = str,
+        help = 'List of properties. Use depends on function.'
+    )
+    
     args = parser.parse_args()
     fcn  = args.function
-    output = True
+    modified = None
     util = ThotUtilities( os.path.abspath( args.root ) )
 
     if fcn == 'add_scripts':
@@ -228,8 +347,29 @@ if __name__ == '__main__':
         
         modified = util.set_scripts( scripts, search )
         
+    elif fcn =='add_assets':    
+        assets = json.loads( args.assets )
+        search = json.loads( args.search )
+        
+        modified = util.add_assets( assets, search, overwrite = args.overwrite )
+        
+    elif fcn == 'remove_assets':
+        assets = json.loads( args.assets )
+        search = json.loads( args.search )
+        
+        modified = util.remove_assets( assets, search )
+        
+    elif fcn == 'print_tree':
+        properties = ( 
+            json.loads( args.properties )
+            if args.properties is not None else
+            None
+        )    
+        
+        util.print_tree( properties = properties )
+        
     
-    if output:
+    if modified:
         for container in modified:
             print( container._id )
             
@@ -239,13 +379,13 @@ if __name__ == '__main__':
 
 # # Work
 
-# In[6]:
+# In[ ]:
 
 
 # util = ThotUtilities( os.path.abspath( '../../_tests/projects/inclined-plane' ) )
 
 
-# In[7]:
+# In[ ]:
 
 
 # util.add_scripts( [{ 'script': 'new', 'priority': 0, 'autorun': True}], { 'type': 'project'} )

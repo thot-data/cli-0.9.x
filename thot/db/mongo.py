@@ -23,7 +23,7 @@ class MongoDB():
     def __init__( self ):
         """
         """
-        #TODO [2]: Share connection across instances
+        # TODO [2]: Share connection across instances
         client = MongoClient( self._connection_string )
         self.__db = client.thot
         

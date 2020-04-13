@@ -11,7 +11,7 @@ import os
 import random
 
 from .db.local import LocalObject, LocalDB
-from .db.mongo import MongoDB
+from .db.mongo import MongoDB # TODO [2]: Only required for hosted version, remove package dependency
 from bson.objectid import ObjectId
 
 from .classes.thot_interface import ThotInterface
@@ -147,12 +147,11 @@ class LocalProject( ThotInterface ):
             os.path.join( self.root, _id )
         )
         
-        
         if overwrite:
-            self._db.assets.replace_one( path, asset, upsert = True )
+            self._db.assets.replace_one( _id, asset, upsert = True )
             
         else:
-            self._db.assets.insert_one( path, asset )
+            self._db.assets.insert_one( _id, asset )
     
         return os.path.normpath( 
             os.path.join( path, asset[ 'file' ] )
@@ -391,32 +390,38 @@ class ThotProject( ThotInterface ):
         return assets
     
     
-    def add_asset( self, asset, overwrite = True ):
+    def add_asset( self, asset, _id = None, overwrite = True ):
         """
         Creates a new Asset.
         
         :param asset: Dictionary of information about the Asset.
+        :param _id: Ignored. Included for compatibility with LocalProject.
         :param overwrite: (NOT IMPLEMENTED) Allow Asset to be overwritten if it already exists.
             [Default: True]
         :returns: Path to Asset file.
         """
         # TODO [0]: Ensure file is safe
-        
-        
         # modify asset properties
-        # file
-        if 'file' not in asset:
-            # grab file for name, if not provided
-            asset[ 'file' ] = asset[ 'name' ]
         
-        asset[ 'file' ] = ( # rename asset file to avoid conflicts
-            os.path.join( # base name
-                os.getcwd(), 
-                str( random.random() )[ 2: ] 
-            )
-            + 
-            os.path.splitext( asset[ 'file' ] )[ 1 ] # extension
+        # file
+        # rename asset file to avoid conflicts
+        file_name = os.path.join( 
+            os.getcwd(),
+            str( random.random() )[ 2: ]
         )
+        
+        if ( 'file' in asset ):
+            # test if normal file name
+            extension = os.path.splitext( asset[ 'file' ] )[ 1 ] # extension
+            
+            if not extension:
+                # file was not normal name
+                # check if extension only
+                if asset[ 'file' ][ 0 ] == '.':
+                    # file is extension type
+                    extension = asset[ 'file' ][ 1: ]
+        
+        asset[ 'file' ] = '{}.{}'.format( file_name, extension )
         
         # user role
         asset[ 'roles' ] = [ {
@@ -460,6 +465,7 @@ class ThotProject( ThotInterface ):
                 search[ key ] = [ self._convert_ids( elm ) for elm in val ]
             
         return search
+    
         
     def _restrict_search( self, search ):
         """

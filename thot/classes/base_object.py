@@ -6,7 +6,6 @@
 # In[6]:
 
 
-import random
 import json
 from collections.abc import Mapping
 
@@ -26,9 +25,6 @@ class BaseObject( Mapping ):
         :param properties: Initial property values. 
         :param defaults: Default property values.
         """
-        # add _id to defaults
-        defaults[ '_id' ] = str( random.random() )[ :2 ]
-        
         self._properties = defaults.keys() # save white listed names
         
         properties = { **defaults, **properties } # set defaults
@@ -40,16 +36,22 @@ class BaseObject( Mapping ):
                 
                 # convert metadata list to dictionary
                 for datum in val:
-                    md_val = datum.value
+                    md_val = datum[ 'value' ]
                     
                     # cast value to correct type, comes as string
-                    if datum.type is 'number':
-                        md_val = float( md_val )
+                    if datum[ 'type' ] is 'number':
+                        try:
+                            # check if int
+                            md_val = int( md_val )
+
+                        except ValueError as err:
+                            # try as float
+                            md_val = float( md_val )
                         
-                    elif datum.type is 'json':
+                    elif datum[ 'type' ] is 'json':
                         md_val = json.loads( md_val )
         
-                    md[ datum.name ] = md_val
+                    md[ datum[ 'name' ] ] = md_val
                 
                 val = md
                 
@@ -98,14 +100,12 @@ class BaseObjectJSONEncoder( json.JSONEncoder ):
     """
     
     def default( self, obj ):
-        
         if isinstance( obj, BaseObject ):
             return obj.__json__()
         
         else:
-            raise TypeError( 'Object is not a BaseObject.' )
-        
-    
+            # raise TypeError( 'Object {} is not a BaseObject.'.format( obj ) )
+            super().default( obj )
 
 
 # # Work

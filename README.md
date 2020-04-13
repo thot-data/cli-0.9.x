@@ -4,20 +4,20 @@
 
 Data management and analysis software.
 
-
+> For full documentation go to [Read The Docs](https://thot-data-docs.readthedocs.io/en/latest/).
 
 # Thinking About Thot
 Thot is based on **top-down organization** and **bottom-up analysis**, or, congruently, **outside-in organization** and **inside-out analysis**.
 
 [images]
 
-There are three components of a Thot project **Containers**, **Assets**, and **Scripts**.
+There are three components of a Thot project: **Containers**, **Assets**, and **Scripts**.
 
 ## Containers
-Containers are the organizational building blocks of your project. They allow you to structure your projects and analysis in a logical way. Following the top-down organizational approach, Containers can contain both other Containers as children, and Assets. They can also have descriptors and metadata attached to them. Child containers inheret all the properties of their parents. Containers are also associated with Scripts, which analyze its Assets and produce new Assets.
+Containers are the organizational building blocks of your project. They allow you to structure your projects and analysis in a logical way. Following the top-down organizational approach, Containers can contain both other Containers as children, and Assets. They can also have descriptors and metadata attached to them. Child containers inherit all the properties of their parents. Containers are also associated with Scripts, which analyze its Assets and produce new Assets.
 
 ## Assets
-An Asset is anything that is consumed or created in your analysis. This includes, raw data, calculated data, and images. Each Asset can have descriptors and metadata attached to it as well.
+An Asset is anything that is consumed or created in your analysis. This includes raw data, calculated data, and images. Each Asset can have descriptors and metadata attached to it as well.
 
 ## Scripts
 A Script is a multi-input, multi-output function where the inputs and outputs are Assets. The input to a script is *consumed* and the output is *produced*. The produced Assets can then be consumed by other Scripts in the future.
@@ -31,7 +31,7 @@ Descriptors are human-readable pieces of data that describe what they are attach
 + Description
 
 ### Metadata
-Metadata is data about data. Children inheret metadata from their parents.
+Metadata is data about data. Children inherit metadata from their parents.
 
 
 
@@ -119,15 +119,17 @@ A **\_notes** folder can also be included in a Container or Asset. Text files co
 Thot comes with a `utilities` module to make building local projects an easier task. For full documentation use `python -m thot.utilities -h`. All utility functions output the ids of modified of Containers.
 
 #### Options
-Utitlities functions include some generic options that can be applied to all functions.
+Utilities functions include some generic options that can be applied to all functions.
 + `--root`, `-r`: Specifies path to the root Container.
 + `--overwrite`, `-w`: If a conflict emergers, overwrite the original content with the provided content. Otherwise, leave the original content.
 + `--search`, `-s`: JSON object used to match Containers to apply the function to.
 
+> Ensure that your JSON is properly quoted. You will likely have to place single quotes around the JSON string, and double quaotes around property keys and strings within the object. E.g. `'{ "string_property": "test string", "boolean_property": true, "number_property": 42 }'`
+
 #### Scripts
 You can autotmatically add scripts to a project using the `add_scripts` function.
 ```bash
-python -m thot.utiltiies add_scripts --scripts <scripts_object>
+python -m thot.utilities add_scripts --scripts <scripts_object>
 ```
 
 Where `<scripts_object>` mimics the [`_scripts.json`](#_scriptsjson) file. For convenience, if only one script is being added it does not need to be enclosed in an array.
@@ -175,7 +177,7 @@ Each Thot Project implements a standard interface. This makes converting between
 
 + **find_assets( search = {} ):** Returns a list of Assets matching the search criteria.
 
-+ **add_asset( asset [, id = None, overwrite = True] ):** Creates a new asset in the currently active Container. Returns the id of the new Asset.
++ **add_asset( asset [, id = None, overwrite = True] ):** Creates a new asset in the currently active Container. Returns the id of the new Asset. For a Local project the id is the absolute path to the Asset.
 
 #### Local Project
 A Local Project is a Thot Interface that uses your local file system as its database. During the analysis everything is performed relative to the active Container.
@@ -206,10 +208,28 @@ asset_path = thot.add_asset( stats_props, 'stats', overwrite = True )
 stats.to_csv( asset_path )
 ```
 
+##### Testing Scripts
+You can test your scripts using the `LocalHost.dev_mode()` function along with passing in a test container to act as the temporary root of your project.
+```python
+root_path = (
+    'realtive/path/to/test/container'
+    if LocalProject.dev_mode() else 
+    None
+)
+
+thot = LocalProject( root_path )
+```
+This allows you to run your scripts within the console or a Jupyter Notebook without analyzing the entire project tree. the `LocalProject.dev_mode()` method returns `True` if the script is being run by the [Runner](#Runner), and `False` if it's being run manualluy, i.e. from the console or within a Jupyter Notebook. 
+
+##### Runner
+
 Once your project is set up you use the Runner to evaluate it.
 ```shell
-python -m thot.runner [--root <path/to/project>]
+python -m thot.runner [--root <path/to/tree>] [--scripts [ <script_1>, <script_2>, ... ] ]
 ```
++ `--root`: Specifies the root container whose tree should be run. This doesn't need to be the root of the project. If not included the current directory is used as the root. 
++ `--scripts`: A JSON array specifying which scripts to run. If not included all scripts are run.
+
 
 #### Hosted Project
 A Hosted Project uses the Thot servers as its database. Anytime a change is made to a project, the relevant analysis are automatically run, unless the scripts are set to run manually.

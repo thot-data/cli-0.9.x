@@ -3,21 +3,17 @@
 
 # # Script
 
-# In[1]:
+# In[ ]:
 
-
-from datetime import datetime
 
 from .base_object import BaseObject
-from .role import Role
-from .note import Note
-from .metadata import Metadata
+from .resource import Resource
 
 
 # In[ ]:
 
 
-class Script( BaseObject ):
+class Script( Resource ):
     """
     A Script.
     """
@@ -29,15 +25,10 @@ class Script( BaseObject ):
         :param **kwargs: Initial property values.
         """
         defaults = {
-            'created':      datetime.now(),
-            'name':         None,
             'file':         None,
             'language':     None,
             'description':  None,
-            'version':      0,
-            'tags':         [],
-            'roles':        [],
-            'notes':        []
+            'version':      0
         }
         
         super().__init__( kwargs, defaults )
@@ -58,11 +49,10 @@ class ScriptAssociation( BaseObject ):
         defaults = {
             'script': None,
             'priority': 0,
-            'autorun':  False
+            'autorun':  True
         }
         
         super().__init__( kwargs, defaults )
-        del self._id # remove _id field
         
         
     def __lt__( self, other ):
@@ -73,16 +63,5 @@ class ScriptAssociation( BaseObject ):
         :returns: True if priority is less than other, False otherwise.
         """
         return ( self.priority < other.priority )
-    
-    
-    def __json__( self ):
-        """
-        :returns: Dictionary to write to JSON.
-        """
-        return {
-            'script': self.script,
-            'priority': self.priority,
-            'autorun': self.autorun
-        }
         
 
