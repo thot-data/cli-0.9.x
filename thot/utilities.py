@@ -496,7 +496,7 @@ if __name__ == '__main__':
 
     if fcn == 'add_scripts':
         scripts = json.loads( args.scripts )
-        search  = args.search
+        search  = json.loads( args.search )
         
         modified = util.add_scripts( scripts, search, overwrite = args.overwrite )
         

@@ -271,13 +271,13 @@ class LocalObject( Mapping ):
     
     
     def __getitem__( self, item ):
-        if item is '_id':
+        if item == '_id':
             return self.path
         
-        elif item is 'notes':
+        elif item == 'notes':
             return self.notes
         
-        elif item is 'parent':
+        elif item == 'parent':
             return self.parent
         
         else:    
@@ -419,26 +419,19 @@ class LocalContainer( LocalObject ):
     
     
     def __getitem__( self, item ):
-        try:
-            return super().__getitem__( item )
-            
-        except KeyError as err:
-            # item not found in parent, check additional attributes
-            # children, assets, scripts  
-            
-            if item is 'children':
-                return [ child.path for child in self.children ]
-            
-            elif item is 'assets':
-                return [ asset.path for asset in self.assets ]
+        # attempt to retrieve specific attributes first
+        if item == 'children':
+            return [ child.path for child in self.children ]
+
+        elif item == 'assets':
+            return [ asset.path for asset in self.assets ]
+
+        elif item == 'scripts':
+            return self.scripts
         
-            elif item is 'scripts':
-                return self.scripts
-            
-            else:
-                # attribute not found
-                raise err
-                
+        else:
+            return super().__getitem__( item )
+                            
     
     def __iter__( self ):
         # TODO [4]: Can refer to super?
@@ -554,7 +547,6 @@ class LocalCollection():
                 :returns: True if matches, False otherwise.
                 """
                 # TODO [1]: Children should inherit metadata from ancestors for searches
-               
                 # parse prop
                 prop_path = prop.split( '.' )
                 for part in prop_path:

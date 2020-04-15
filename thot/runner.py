@@ -76,7 +76,6 @@ def eval_tree(
         root = ObjectId( root )
         
     root = db.containers.find_one( { '_id': root } )
-    # print( '\n', root.scripts, '\n' )
     root = Container( **root )
     
     # eval children
@@ -205,6 +204,20 @@ if __name__ == '__main__':
         type = str,
         help = 'User ID. Required for hosted environment.'
     )
+    
+    # TODO [1]
+#     parser.add_argument(
+#         '-s', '--search',
+#         type = str,
+#         help = 'Search filter for Containers to run. Exclude for all.'
+#     )
+
+    # TODO [1]
+#     parser.add_argument(
+#         '-d', '--depth',
+#         type = number,
+#         help = 'Maximum depth of the tree to run. Exclude for all.'
+#     )
     
     parser.add_argument(
         '--scripts',

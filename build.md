@@ -24,7 +24,4 @@ pip install --index-url https://test.pypi.org/simple/ <package name>
 	2. Tag the commit with the new version `git tag v<version>`. 
 	3. Merge with `master` branch.
 2. Upload to GitHub.
-3. Upload to PyPi using
-```bash
-twine upload dist/*<version>*
-```
+3. Upload to PyPi using `twine upload -r pypi dist/*<version>*`
