@@ -195,7 +195,7 @@ class ThotUtilities():
         :returns: List of modified children.
         """
         containers = { _id: Container( **container ) for _id, container in containers.items() }
-        return self._add_objects( containers, search, overwrite = overwrite )
+        return self.add_objects( containers, search, overwrite = overwrite )
     
     
     def remove_containers( self, containers, search = None ):
