@@ -4,7 +4,7 @@
 # # Thot
 # Library for data analysis and management.
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -22,7 +22,7 @@ from .classes.script         import ScriptAssociation
 
 # ## Local
 
-# In[2]:
+# In[ ]:
 
 
 class LocalProject( ThotInterface ):
@@ -208,7 +208,7 @@ class LocalProject( ThotInterface ):
 
 # ## Hosted
 
-# In[43]:
+# In[ ]:
 
 
 class ThotProject( ThotInterface ):
@@ -516,14 +516,14 @@ class ThotProject( ThotInterface ):
 
 # # Work
 
-# In[62]:
+# In[ ]:
 
 
 # root = os.path.join( os.getcwd(), '_tests/data/inclined-plane' )
 # thot = LocalProject( root )
 
 
-# In[63]:
+# In[ ]:
 
 
 # result = thot.find_container( { 'type': 'sample' } )

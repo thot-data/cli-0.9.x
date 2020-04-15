@@ -554,6 +554,7 @@ class LocalCollection():
                 :returns: True if matches, False otherwise.
                 """
                 # TODO [1]: Children should inherit metadata from ancestors for searches
+               
                 # parse prop
                 prop_path = prop.split( '.' )
                 for part in prop_path:
@@ -564,7 +565,26 @@ class LocalCollection():
                         # property not contained in object
                         return False
                     
-                return ( obj == value )
+                if isinstance( value, list ):
+                    # value is list, check for inclusion
+                    
+                    if isinstance( obj, list ):
+                        # object is list, verfiy all values are in object
+                        for item in value:
+                            if item not in ob:
+                                # search item not obj 
+                                return false
+                            
+                        # all items present
+                        return true
+                        
+                    else:
+                        # object is not list, can not match
+                        return false
+                
+                else:
+                    # value is not list, check for direct match
+                    return ( obj == value )
                 
                
         
@@ -602,9 +622,12 @@ class LocalCollection():
             
         # create object file
         of = LocalObject._object_file_format.format( self.kind )
-        of_path = os.path.normpath( os.path.join( 
-            self.root._id, path, of 
+        
+        _id = os.path.normpath( os.path.join( 
+            self.root._id, path
         ) )
+        
+        of_path = os.path.join( _id, of )
         
         self._to_json( of_path, properties )
         
@@ -612,7 +635,7 @@ class LocalCollection():
         # TODO [1]: add object to self
         self.__init__( self.root._id, self.kind )
         
-        return 
+        return self.find_one( { "_id": _id } )
 
         
     def replace_one( self, path, properties = {}, upsert = False ):
@@ -623,6 +646,7 @@ class LocalCollection():
         :param properties: Properties of the object. [Default: {}]
         :param upsert: Insert new document if it doesn't yet exist.
             [Default: False]
+        :returns: Replaced object.
         """
         # TODO [1]: Not working
         # check object already exists
@@ -642,15 +666,19 @@ class LocalCollection():
         # create object property file
         of = LocalObject._object_file_format.format( self.kind )
         
-        of_path = os.path.normpath( os.path.join( 
-            self.root._id, path, of 
+        _id = os.path.normpath( os.path.join( 
+            self.root._id, path
         ) )
+        
+        of_path = os.path.join( _id, of )
         
         self._to_json( of_path, properties )
             
         # Reinitialize to incorporate new object
         # TODO [1]: add object to self
         self.__init__( self.root._id, self.kind )
+        
+        return self.find_one( { "_id": _id } )
         
         
     def _to_json( self, path, properties ):
