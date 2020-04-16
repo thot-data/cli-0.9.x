@@ -20,7 +20,7 @@ from .db import local
 
 
 class ThotUtilities():
-    """
+    """_a
     Utility functions for manipulating and exploring local Thot projects.
     """
     
@@ -44,10 +44,6 @@ class ThotUtilities():
             # single script passed in
             scripts = [ scripts ]
         
-        # create script associations
-        for index, script in enumerate( scripts ):
-            scripts[ index ] = ScriptAssociation( **script )
-        
         modified = []
         containers = self._db.containers.find( search )
         for container in containers:
@@ -60,19 +56,24 @@ class ThotUtilities():
                 # scripts file does not exist
                 path = err.filename
 
-            container_scripts = [ script[ 'script' ] for script in container.scripts ]
+            # must load scripts file directly because container has already parsed path
+            with open( path ) as scripts_file:
+                container_scripts = json.load( scripts_file )
+            
+            container_script_ids = [ script[ 'script' ] for script in container_scripts ]
+
             for script in scripts:
-                if script.script in container_scripts:
+                if script[ 'script' ] in container_script_ids:
                     # script already in scripts
-                    if ( overwrite ):
+                    if overwrite:
                         # replace with new script
-                        index = container_scripts.index( script.script )
-                        container.scripts[ index ] = script
+                        index = container_script_ids.index( script[ 'script' ] )
+                        container_scripts[ index ] = script
                         container_modified = True
                     
                 else:
                     # script does not exist yet
-                    container.scripts.append( script )
+                    container_scripts.append( script )
                     container_modified = True
                     
             if container_modified:
@@ -80,7 +81,7 @@ class ThotUtilities():
                 
                 # save changes
                 with open( path, 'w' ) as f:
-                    json.dump( container.scripts, f, cls = BaseObjectJSONEncoder, indent = 4 )
+                    json.dump( container_scripts, f, cls = BaseObjectJSONEncoder, indent = 4 )
     
         return modified
         
@@ -396,7 +397,7 @@ class ThotUtilities():
 
 
     def get_object_collection( self, kind ):
-        """
+        """par
         Returns the collection of the given kind.
 
         :param kind: Kind of collection.
