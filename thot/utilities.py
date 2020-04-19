@@ -7,7 +7,10 @@
 
 
 import os
+import re
 import json
+import shutil
+from glob import glob
 
 from .classes.base_object import BaseObjectJSONEncoder
 from .classes.container import Container
@@ -20,7 +23,7 @@ from .db import local
 
 
 class ThotUtilities():
-    """_a
+    """
     Utility functions for manipulating and exploring local Thot projects.
     """
     
@@ -270,8 +273,155 @@ class ThotUtilities():
             )
           
         
-    # helper functions    
+    def datum_to_asset( self, path, properties = None, _id = None, rename = None ):
+        """
+        Converts a file to a Thot Asset.
+
+        :param path: Path to the data file.
+        :param properties: Dictionary to use as properties or None to only set the 'file'.
+            If file is not set, it will automatically be created.
+            [Default: None]
+        :param _id: String of the Asset's id or None.
+            Sets the id of the Asset. This is effectively the name of the Asset folder.
+            If None sets the id as the bare file base path.
+            [Default: None]
+        :param rename: String to rename the data file to, or None to leave the same.
+            Should include the extension.
+            [Default: None]
+        :returns: Id of new Asset.
+        """
+        # split path into components
+        ( parent_dir, data_name ) = os.path.split( path )
+
+        # create asset folder
+        if _id is None:
+            # _id not passed, default to name of file
+            ( _id, _ ) = os.path.splitext( data_name )
+
+        asset_path = os.path.join( parent_dir, _id )
+        os.mkdir( asset_path )
+
+        # move file to folder
+        if rename is None:
+            # rename not passed, use same name
+            rename = data_name
+
+        data_path = os.path.join( asset_path, rename ) 
+        shutil.move( path, data_path )
+
+        # add _asset.json file
+        if properties is None:
+            # properties not given, create file field
+            properties = {
+                'file': rename
+            }
             
+        elif 'file' not in properties:
+            properties[ 'file' ] = rename
+        
+        asset_file = os.path.join( asset_path, '_asset.json' )
+        with open( asset_file, 'w' ) as f:
+            json.dump( properties, f, indent = 4 )
+            
+        return os.path.abspath( asset_path )
+
+
+    def data_to_asset( self, path, search = None, properties = None, _id = None, rename = None ):
+        """
+        Converts multiple data fiels to assets.
+
+        :param path: Path to the data file. 
+        :param search: Glob to limit data ffiles converted or None to convert all in path.
+            [Default: None]
+        :param properties: Dictionary or callable to use as properties or None to only set the 'file'. 
+            If callable will be run with the full path of the data as the argument,
+            should return a Dictionary of properties.
+            If a Dictionary, values can be callable with the full path passed in.
+            If 'file' field is not defined, it will be automatically assigned.
+            [Default: None]
+        :param _id: Callable taking the absolute path of the data file as its argument,
+            returning the Asset's id, or None.
+            Sets the id of the Asset. This is effectively the name of the Asset folder.
+            If None sets the id as the bare file base path.
+        :param rename: None to leave data file name untouched. 
+            String or callable to change the name.
+            If callable should accept the absolute path of the data as the argument,
+            returning the new name.
+            Extension must be included.
+            [Default: None]
+        """
+        # get files to convert
+        if ( search is None ):
+            # serach not passed in, convert all files
+            search = '*'
+            
+        path = os.path.join( path, search )
+        files = glob( path )
+        
+        # remove _container.json and _scipts.json
+        obj_pattern = '(_container\.json|_scripts\.json)$'
+        files = filter( 
+            lambda file: ( re.search( obj_pattern, file ) is None ), 
+            files 
+        )
+        
+        assets = []
+        for file in files:
+            # ignore directories
+            if not os.path.isfile( file ):
+                continue
+            
+            abs_file = os.path.abspath( file )
+            
+            # create arguments
+            if callable( properties ):
+                asset_properties = properties( abs_file )
+            
+            elif isinstance( properties, dict ):
+                asset_properties = {
+                    prop: ( 
+                        value( abs_file )
+                        if callable( value ) else
+                        value
+                    )
+                    for prop, value in properties
+                }
+                
+            else:
+                asset_properties = None
+            
+        
+            asset_id = (
+                _id( abs_file )
+                if callable( _id ) else
+                None
+            )
+            
+            if isinstance( rename, str ):
+                asset_rename = rename
+            
+            elif callable( rename ):
+                asset_rename = rename( abs_file )
+            
+            else:
+                asset_rename = None
+            
+            # create asset
+            asset = self.datum_to_asset( 
+                file,  
+                properties = asset_properties,
+                _id = asset_id,
+                rename = asset_rename
+            )
+            
+            assets.append( asset )
+        
+        return assets
+    
+        
+    #--- helper functions ---    
+            
+        
     def add_objects( self, objects, search, overwrite = False ):
         """
         Add objects to the matched Containers.
@@ -434,6 +584,44 @@ class ThotUtilities():
 
 # ## Main
 
+# ### Helper Functions
+
+# In[ ]:
+
+
+def _arg_to_json( arg, default = None ):
+    """
+    :param arg: None or string to parse.
+    :param default: Value to return if arg is None. [Defualt: None]
+    :returns: Default value if arg is None, otherwise attempts to parse args as JSON.
+    """
+    return (
+        default
+        if ( arg is None ) else
+        json.loads( arg )
+    )
+
+    
+def set_defaults( params, defaults, whitelist = True ):
+    """
+    :param params: Dictionary of input parameters.
+    :param defaults: Dictionary of default parameters or list if all values are None.
+    :param whitelist: Remove any fields not listed in defaults. [Default: True]
+    :returns: Dictionary with defaults set.
+    """
+    if isinstance( defaults, list ):
+        defaults = { key: None for key in defaults }
+    
+    params = {  **defaults, **params }
+    if whitelist:
+        # sanitize params based on defaults
+        params = { key: val for key, val in params.items() if key in defaults }
+    
+    return params
+
+
+# ### Main Function
+
 # In[ ]:
 
 
@@ -488,6 +676,12 @@ if __name__ == '__main__':
         help = 'Allows overwriting objects if they already exist.'
     )
     
+    parser.add_argument(
+        '--kwargs',
+        type = json.loads,
+        help = 'Additional keyword arguments. Allowed values depends on the function being called.'
+    )
+    
     
     # TODO [0]: Fix parse errors for Windows machines
     args = parser.parse_args()
@@ -509,11 +703,7 @@ if __name__ == '__main__':
             # single script passed in
             scripts = args.scripts
         
-        search = (
-            {}
-            if ( args.search is None ) else
-            json.loads( args.search )
-        )
+        search = _arg_to_json( args.search, {} )
         
         modified = util.remove_scripts( scripts, search )
       
@@ -531,13 +721,45 @@ if __name__ == '__main__':
         
     elif fcn == 'remove_assets':
         assets = json.loads( args.assets )
-        search = (
-            None
-            if ( args.search is None ) else
-            json.loads( args.search )
-        )
+        search = _arg_to_json( args.search )
         
         modified = util.remove_assets( assets, search )
+        
+    elif fcn == 'data_to_assets':
+        properties = _arg_to_json( args.assets )
+        
+        defaults = [ '_id', 'rename' ]
+        kwargs = set_defaults( args.kwargs, defaults )
+        
+        # parse _id as function
+        _id = (
+            eval( kwargs[ '_id' ] )
+            if ( kwargs[ '_id' ] is not None ) else
+            None
+        )
+          
+        if kwargs[ 'rename' ] is not None:
+            # parse rename as function or string
+            try:
+                # parse as function
+                rename = eval( kwargs[ 'rename' ] )
+
+            except NameError as err:
+                # rename not function, string
+                rename = kwargs[ 'rename' ]
+                
+        else:
+            rename = kwargs[ 'rename' ]
+        
+        assets = util.data_to_asset( 
+            args.root,
+            search = args.search,
+            properties = properties, 
+            _id = _id,  
+            rename = rename
+        )
+        
+        print( assets )
         
     elif fcn == 'add_containers':
         containers = json.loads( args.containers )
@@ -547,32 +769,14 @@ if __name__ == '__main__':
         
     elif fcn == 'remove_containers':
         containers = json.loads( args.containers )
-        search = (
-            None
-            if ( args.search is None ) else
-            json.loads( args.search )
-        )
+        search = _arg_to_json( args.search )
         
         modified = util.remove_containers( containers, search )
         
     elif fcn == 'print_tree':
-        properties = ( 
-            json.loads( args.containers )
-            if args.containers is not None else
-            None
-        )
-        
-        assets = (
-            None
-            if ( args.assets is None ) else
-            json.loads( args.assets )
-        )    
-        
-        scripts = (
-            None
-            if ( args.scripts is None ) else
-            json.loads( args.scripts )
-        )
+        properties = _arg_to_json( args.containers )
+        assets = _arg_to_json( args.assets )
+        scripts = _arg_to_json( args.scripts )
         
         util.print_tree( properties = properties, assets = assets, scripts = scripts )
         
