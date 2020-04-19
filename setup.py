@@ -9,7 +9,6 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-
 project_urls = {
 	'Documentation': 	'https://thot-data-docs.readthedocs.io/',
 	'Source Code': 		'https://github.com/bicarlsen/thot-data',
@@ -17,10 +16,9 @@ project_urls = {
 }
 
 
-
 setuptools.setup(
 	name='thot-data',
-	version = '0.0.7',
+	version = '0.0.8',
 	author='Brian Carlsen',
 	author_email = 'carlsen.bri@gmail.com',
 	description = 'Thot data analysis and management.',
