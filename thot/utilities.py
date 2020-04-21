@@ -384,7 +384,7 @@ class ThotUtilities():
                         if callable( value ) else
                         value
                     )
-                    for prop, value in properties
+                    for prop, value in properties.items()
                 }
                 
             else:
@@ -611,6 +611,9 @@ def set_defaults( params, defaults, whitelist = True ):
     """
     if isinstance( defaults, list ):
         defaults = { key: None for key in defaults }
+    
+    if params is None:
+        params = {} 
     
     params = {  **defaults, **params }
     if whitelist:
