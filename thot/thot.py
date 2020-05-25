@@ -163,7 +163,7 @@ class LocalProject( ThotInterface ):
         """
         Whether the script is being run in development mode or not.
         
-        :returns: False if being run from the runner, False otherwise.
+        :returns: False if being run from the runner, True otherwise.
         """
         return ( 'THOT_CONTAINER_ID' not in os.environ )
     

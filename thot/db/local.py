@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Local Database
@@ -9,6 +9,7 @@
 import os
 import re
 import json
+from pathlib import Path
 from datetime import datetime
 from glob import glob
 from functools import partial
@@ -209,36 +210,45 @@ class LocalObject( Mapping ):
         return os.path.join( self._id, '_{}.json'.format( self.kind ) )
     
     
-    def get_project_root( self ):
+    def get_ancestors( self ):
         """
-        Get's the ultimate root of the container.
+        Gets the paths of the ancestors of the container, including the container itself.
+        The list is arranged from youngest to oldest.
         
-        :returns: Path of the ultimate project root.
+        :returns: List of ancestors Paths.
         """
-        path = self.path
-        while True: 
-            parent = os.path.split( path )[ 0 ]
+        path = Path( self.path )
+        paths = [ path ] + list( path.parents )
+        ancestors = []
+        for idx, path in enumerate( paths ):
+            ancestors.append( path )
+            
             try:
-                if ( self.get_kind( parent ) == 'container' ):
+                if ( self.get_kind( paths[ idx + 1 ] ) == 'container' ):
                     # parent is container
-                    path = parent
+                    continue 
                     
             except RuntimeError as err:
                 # parent was not a container, exited project
-                return path
+                return ancestors
+    
+    
+    def get_project_root( self ):
+        """
+        Gets the path of the ultimate root of the container.
+        
+        :returns: Path of the ultimate project root.
+        """
+        return self.get_ancestors()[ -1 ]
     
     
     def inherited_metadata( self ):
         """
         :returns: Dictionary of inherited metadata.
         """
-        root = self.get_project_root()
-        path = self.path
-        
         inherited = {}
-        while path != root:
-            path = os.path.split( path )[ 0 ] # get parent
-            parent_meta = self.load_object_file( path )
+        for ancestor in self.get_ancestors():
+            parent_meta = self.load_object_file( ancestor )
             if 'metadata' in parent_meta:
                 parent_meta = parent_meta[ 'metadata' ]
                 
@@ -250,23 +260,24 @@ class LocalObject( Mapping ):
     
     def _parse_path( self, path ):
         """
-        Returns the parsed path accounting for `root:` directive.
+        :returns: Parsed path accounting for `root:` directive.
         """
+        path = Path( path )
+        parts = path.parts
         root_pattern = '^(root|ROOT):'
-        
-        if re.search( root_pattern, path ):
+
+        if re.search( root_pattern, parts[ 0 ] ):
             # root in path, absolute path
             # get root_path
-            root_path = self.get_project_root()
-            path = re.sub( root_pattern, root_path, path )
-            path = os.path.normpath( path )
+            path = self.get_project_root()
+            for part in parts[ 1: ]:
+                path = path.joinpath( part )
         
         else:
             # root not in path, relative path
-            path = os.path.normpath( os.path.join( 
-                self._id, path 
-            ) )
-            
+            path = os.path.join( self._id, path )
+
+        path = os.path.normpath( path )
         return path
     
     
@@ -698,7 +709,7 @@ class LocalDB():
         """
         :param root: Path to root folder.
         """
-        self.__root = os.path.normpath( root )
+        self.__root = root
         tree = LocalContainer( root )
         
         self.__containers = LocalCollection( tree, 'container' )
@@ -718,6 +729,29 @@ class LocalDB():
     @property
     def assets( self ):
         return self.__assets
+    
+    
+
+    def parse_path( self, path ):
+        """
+        :returns: Parsed path accounting for `root:` directive.
+        """
+        parts = Path( path ).parts
+        root_pattern = '^(root|ROOT):'
+
+        if re.search( root_pattern, parts[ 0 ] ):
+            # root in path, absolute path
+            # get root_path
+            path = self.containers.root.get_project_root()
+            for part in parts[ 1: ]:
+                path = path.joinpath( part )
+            
+        else:
+            # root not in path, relative path
+            path = os.path.join( self.root, path )
+
+        path = os.path.normpath( path )
+        return path
 
 
 # # Work
@@ -755,4 +789,10 @@ class LocalDB():
 
 # for c in db.assets.find():
 #     print(  c.meta )
+
+
+# In[ ]:
+
+
+
 

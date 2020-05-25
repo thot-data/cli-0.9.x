@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Runner
@@ -97,6 +97,7 @@ def eval_tree(
                 verbose       = verbose 
             )
 
+    # TODO [1]: Check filtering works for local projects.
     # filter scripts to run
     root.scripts.sort()
     run_scripts = (
@@ -157,6 +158,11 @@ def run_local( root, **kwargs ):
     :param kwargs: Arguments passed to #eval_tree 
     """
     db = LocalDB( root )
+    
+    # parse scripts if present
+    if kwargs[ 'scripts' ] is not None:
+        kwargs[ 'scripts' ] = [ db.parse_path( path ) for path in kwargs[ 'scripts' ] ]
+    
     eval_tree( root, db, **kwargs )
     
     
@@ -278,4 +284,10 @@ if __name__ == '__main__':
 # )
 
 # run_local( root )
+
+
+# In[ ]:
+
+
+
 
