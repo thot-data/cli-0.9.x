@@ -290,13 +290,35 @@ class ThotProject( ThotInterface ):
             }
         ] )
         
+        # ancestors are ordered oldest to youngest
         # prune ancestors to _id field only, add self to ancestors
+        # retrieve inherited metadata
         projected = []
         for container in containers:
+            # collect metadata of ancestors
+            inherited_keys = []
+            inherited_metadata = []
+            for ancestor in reversed( container[ 'ancestors' ] ) :
+                # iterate from youngest to oldest
+                for datum in ancestor[ 'metadata' ]:
+                    if datum[ 'name' ] not in inherited_keys:
+                        # datum not inherited yet
+                        inherited_metadata.append( datum )
+                        inherited_keys.append( datum[ 'name' ] )
+            
+            local_keys = [ datum[ 'name' ] for datum in container[ 'metadata' ] ]
+            container[ 'metadata' ] += [ # add inherited metadata if not already defined 
+                inherited 
+                for inherited in inherited_metadata 
+                if ( inherited[ 'name' ] not in local_keys ) 
+            ]
+            
+            # prune ancestors
             ancestors = [ str( ancestor[ '_id' ] ) for ancestor in container[ 'ancestors' ] ]
             ancestors.append( str( container[ '_id' ] ) )
             container[ 'ancestors' ] = ancestors
             projected.append( container )
+        
         
         containers = filter( # keep only those with root as an ancestor
             lambda container: self._root in container[ 'ancestors' ],
@@ -339,38 +361,37 @@ class ThotProject( ThotInterface ):
             self._convert_ids( search ) 
         )
         
-        if '_id' not in search:
-            # get all assets under root
-            # TODO [5]: Make more efficient
-            root = self._db.containers.aggregate( [ 
-                { # get root
-                    '$match': { '_id': ObjectId( self._root ) }
-                },
+        # get all assets under root
+        root = self._db.containers.aggregate( [ 
+            { # get root
+                '$match': { '_id': ObjectId( self._root ) }
+            },
 
-                { # recurse to get descendants
-                    '$graphLookup': {
-                        'from': 'containers',
-                        'startWith': '$children',
-                        'connectFromField': 'children',
-                        'connectToField': '_id',
-                        'as': 'descendants'
-                    }
+            { # recurse to get descendants
+                '$graphLookup': {
+                    'from': 'containers',
+                    'startWith': '$children',
+                    'connectFromField': 'children',
+                    'connectToField': '_id',
+                    'as': 'descendants'
                 }
-            ] )
-            
-            # reshape root
-            root = list( root )
-            if len( root ) is not 1:
-                raise RuntimeError( '{} roots found. Must have exactly one.'.format( len( root ) ) )
-                
-            root = root[ 0 ]
-            descendants = root[ 'descendants' ]
-            root = Container( **root )
+            }
+        ] )
 
-            # collect assets
-            assets = ( root.assets if isinstance( root.assets, list ) else [] )
-            for descendant in descendants:
-                assets += descendant.assets
+        # reshape root
+        root = list( root )
+        if len( root ) is not 1:
+            raise RuntimeError( '{} roots found. Must have exactly one.'.format( len( root ) ) )
+                
+        # combine all containers 
+        containers = root + root[ 0 ][ 'descendants' ] 
+
+        if '_id' not in search:
+           # get all assets under root
+           # collect assets
+            assets = []
+            for container in containers:
+                assets += container[ 'assets' ]
 
             # restrict search
             search[ '_id' ] = { '$in': assets }
@@ -383,7 +404,54 @@ class ThotProject( ThotInterface ):
                 os.path.join( os.environ[ 'THOT_SERVER_ROOT' ], asset[ 'file' ] )
             )
             
+            # find parent container
+            parent = None
+            for container in containers:
+                if asset[ '_id' ] in container[ 'assets' ]:
+                    # parent found
+                    parent = container
+                    break
+            
+            if parent is None:
+                # parent not found
+                raise RuntimeError( "Asset's parent not found. Cannot retrieve metadata." )
+
+            # initialize metadata if necessary
+            if 'metadata' not in asset:
+                asset[ 'metadata' ] = []
+
+            # traverse up ancestor tree to collect metadata
+            while parent is not None:
+                # get existing metadata keys
+                keys = [ datum[ 'name' ] for datum in asset[ 'metadata' ] ]
+                asset[ 'metadata' ] += [ 
+                    datum 
+                    for datum in parent[ 'metadata' ] 
+                    if datum[ 'name' ] not in keys 
+                ]
+
+                # get next ancestor
+                parent = [ 
+                    p 
+                    for p in containers 
+                    if p[ '_id' ] == parent[ 'parent' ]
+                ]
+
+                num_parents = len( parent )
+                if num_parents == 0:
+                    # no parent found
+                    parent = None
+
+                elif num_parents == 1:
+                    parent = parent[ 0 ]
+
+                else:
+                    # multiple parents found
+                    raise RuntimeError( 'More than one parent found with id {}.'.format( container[ 'parent' ] ) )
+            
+            
             assets.append( asset )
+        
             
         assets = [ Asset( **asset ) for asset in assets ]
         
@@ -448,7 +516,7 @@ class ThotProject( ThotInterface ):
     @staticmethod
     def _convert_ids( search ):
         """
-        Converts keys named _id to have vbalues of type ObjectId.
+        Converts keys named _id to have values of type ObjectId.
         
         :param search: Dictionary.
         :returns: Dictionary with keys named _id values converted to ObjectIds
@@ -469,7 +537,7 @@ class ThotProject( ThotInterface ):
         
     def _restrict_search( self, search ):
         """
-        Restricts search to user accessbiel items.
+        Restricts search to user accessible items.
         
         :params search: Dictionary.
         :returns: Dictionary with restricted search.

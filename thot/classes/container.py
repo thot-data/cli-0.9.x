@@ -8,6 +8,7 @@
 
 from .resource import Resource
 from .script import ScriptAssociation
+from .role import Role
 
 
 # In[ ]:
@@ -20,7 +21,7 @@ class Container( Resource ):
     
     def __init__( self, **kwargs ):
         """
-        Creates a new Asset.
+        Creates a new Container.
         
         :param **kwargs: Initial property values.
         """

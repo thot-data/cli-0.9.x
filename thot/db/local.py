@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
 # # Local Database
@@ -789,10 +789,4 @@ class LocalDB():
 
 # for c in db.assets.find():
 #     print(  c.meta )
-
-
-# In[ ]:
-
-
-
 
