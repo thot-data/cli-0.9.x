@@ -230,13 +230,14 @@ class ThotProject( ThotInterface ):
             user
         )
         
-        self._data_path = os.path.join( 
-            'user_data', 
-            self._user, 
-            'assets',
-            self._root, 
-            os.environ[ 'THOT_SCRIPT_ID' ]
-        )
+        try:
+        	self._data_path = os.environ[ 'THOT_ASSET_DIRECTORY' ]
+
+        except KeyError as err:
+	        self._data_path = os.path.join( 
+	            '_resources', 
+	            'assets',
+        	)
         
         if not os.path.exists( self._data_path ):
             os.makedirs( self._data_path )
