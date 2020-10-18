@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
 # # Runner
@@ -17,6 +17,7 @@ from bson.objectid import ObjectId
 from .db.local import LocalDB
 from .db.mongo import MongoDB
 from .classes.container import Container
+from .drivers.drivers import get_driver
 
 
 # In[ ]:
@@ -29,6 +30,7 @@ def run_script( script_id, script_path, container_id ):
     :param script_id: ID of the script.
     :param script_path: Path to the script.
     :param container: ID of the container to run from.
+    :returns: Script output. Used for collecting added assets.
     """
     # setup environment
     env = os.environ.copy()
@@ -38,7 +40,7 @@ def run_script( script_id, script_path, container_id ):
     # TODO [0]: Ensure safely run
     # run program
     try:
-        subprocess.check_output(
+        return subprocess.check_output(
             'python {}'.format( script_path ),
             shell = True,
             env = env
@@ -56,7 +58,8 @@ def eval_tree(
     scripts = None,
     ignore_errors = False, 
     multithread = False, 
-    verbose = False 
+    verbose = False,
+    driver = None
 ):
     """
     Runs scripts on the Container tree.
@@ -69,6 +72,7 @@ def eval_tree(
     :param multithread: Evaluate tree using multiple threads. [Default: False]
         CAUTION: May decrease runtime, but also locks system and can not kill.
     :param verbose: Print evaluation information. [Default: False]
+    :param driver: Driver used to modify script retrieval. [Default: None]
     """
     hosted = isinstance( db, MongoDB )
     
@@ -94,7 +98,8 @@ def eval_tree(
                 scripts       = scripts,
                 ignore_errors = ignore_errors,
                 multithread   = multithread,
-                verbose       = verbose 
+                verbose       = verbose,
+                driver        = driver
             )
 
     # TODO [1]: Check filtering works for local projects.
@@ -107,6 +112,7 @@ def eval_tree(
     )
     
     # eval self
+    added_assets = []
     for association in run_scripts:
         if not association.autorun:
             continue
@@ -120,6 +126,8 @@ def eval_tree(
             } )
 
             script_path = script[ 'file' ]
+            if driver:
+                script_path = driver.get_script( script_path )
             
         else:
             # local project script paths are prefixed by path id
@@ -131,7 +139,7 @@ def eval_tree(
             print( 'Running script {} on container {}'.format( script_id, root._id )  )
             
         try:
-            run_script( 
+            script_assets = run_script( 
                 str( script_id ), # convert ids from ObjectId, if necessary
                 script_path, 
                 str( root._id ) 
@@ -145,6 +153,19 @@ def eval_tree(
                 
             else:
                 raise err
+                
+        if driver:
+            script_assets = [ 
+                json.loads( asset ) for asset
+                in script_assets.decode().split( '\n' )
+                if asset
+            ]
+            
+            driver.added_assets += script_assets
+            
+
+    if driver:
+        driver.flush_added_assets()
 
 
 # In[ ]:
@@ -175,6 +196,14 @@ def run_hosted( user, root, **kwargs ):
     :param kwargs: Arguments passed to #eval_tree.
     """
     os.environ[ 'THOT_USER_ID' ] = user
+    
+    # get driver
+    if 'driver' in kwargs:
+        driver = get_driver( kwargs[ 'driver' ] )
+        kwargs[ 'driver' ] = driver( 
+            os.environ[ 'AWS_ACCESS_KEY_ID' ], 
+            os.environ[ 'AWS_SECRET_ACCESS_KEY' ]
+        )
     
     db = MongoDB()
     eval_tree( root, db, **kwargs )
@@ -249,6 +278,14 @@ if __name__ == '__main__':
         help = 'Print evaluation information.'
     )
     
+    parser.add_argument(
+        '-d', '--driver',
+        type = str,
+        required = False,
+        help = 'Driver used to retrieve scripts.'
+    )
+    
+    
     args = parser.parse_args()
     
     scripts = json.loads( args.scripts ) if args.scripts else None
@@ -270,7 +307,8 @@ if __name__ == '__main__':
             args.user, 
             args.root,
             scripts = scripts,
-            verbose = args.verbose 
+            verbose = args.verbose,
+            driver = args.driver
         )
 
 
@@ -284,10 +322,4 @@ if __name__ == '__main__':
 # )
 
 # run_local( root )
-
-
-# In[ ]:
-
-
-
 

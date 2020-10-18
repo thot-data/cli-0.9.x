@@ -8,7 +8,7 @@
 
 
 import os
-import random
+from uuid import uuid4 as uuid
 
 from .db.local import LocalObject, LocalDB
 from .db.mongo import MongoDB # TODO [2]: Only required for hosted version, remove package dependency
@@ -18,6 +18,7 @@ from .classes.thot_interface import ThotInterface
 from .classes.container      import Container
 from .classes.asset          import Asset
 from .classes.script         import ScriptAssociation
+from .drivers.drivers        import get_driver # TODO [2]: Only required for hosted version, remove package dependency
 
 
 # ## Local
@@ -130,10 +131,10 @@ class LocalProject( ThotInterface ):
         """
         # check file is defined
         if 'file' not in asset:
-            _id = str( random.random() )[ 2: ]
+            _id = str( uuid() )
         
         if _id is None:
-            _id = str( random.random() )[ 2: ]
+            _id = str( uuid() )
         
         # set properties
         asset[ 'creator_type' ] = 'script'
@@ -223,6 +224,18 @@ class ThotProject( ThotInterface ):
         super().__init__( root )
         self._db = MongoDB()
         
+        # set up asset driver
+        try:
+            self._driver = get_driver( os.environ[ 'THOT_DRIVER' ] )
+            self._driver = self._driver( 
+                os.environ[ 'AWS_ACCESS_KEY_ID' ], 
+                os.environ[ 'AWS_SECRET_ACCESS_KEY' ] 
+            )
+            
+        except KeyError as err:
+            # driver not found
+            self._driver = None
+        
         # set up environment
         self._user = (
             os.environ[ 'THOT_USER_ID' ]
@@ -231,13 +244,13 @@ class ThotProject( ThotInterface ):
         )
         
         try:
-        	self._data_path = os.environ[ 'THOT_ASSET_DIRECTORY' ]
+            self._data_path = os.environ[ 'THOT_ASSET_DIRECTORY' ]
 
         except KeyError as err:
-	        self._data_path = os.path.join( 
-	            '_resources', 
-	            'assets',
-        	)
+            self._data_path = os.path.join( 
+                '_resources', 
+                'assets',
+            )
         
         if not os.path.exists( self._data_path ):
             os.makedirs( self._data_path )
@@ -257,7 +270,7 @@ class ThotProject( ThotInterface ):
         
         if len( containers ) is 0:
             return None
-        
+            
         return containers[ 0 ]
     
 
@@ -398,6 +411,11 @@ class ThotProject( ThotInterface ):
             search[ '_id' ] = { '$in': assets }
             
         result = self._db.assets.find( search )
+        
+        # pipe results through driver if needed
+        if self._driver:
+            result = self._driver.output_assets( result )
+            
         assets = []
         for asset in result:
             # modify file to be relative to running script location
@@ -469,14 +487,14 @@ class ThotProject( ThotInterface ):
             [Default: True]
         :returns: Path to Asset file.
         """
-        # TODO [0]: Ensure file is safe
+        # TODO [0]: Ensure file is safe.
         # modify asset properties
         
         # file
         # rename asset file to avoid conflicts
         file_name = os.path.join( 
             os.getcwd(),
-            str( random.random() )[ 2: ]
+            str( uuid() )
         )
         
         if ( 'file' in asset ):
@@ -488,9 +506,9 @@ class ThotProject( ThotInterface ):
                 # check if extension only
                 if asset[ 'file' ][ 0 ] == '.':
                     # file is extension type
-                    extension = asset[ 'file' ][ 1: ]
+                    extension = asset[ 'file' ]
         
-        asset[ 'file' ] = '{}.{}'.format( file_name, extension )
+        asset[ 'file' ] = '{}{}'.format( file_name, extension )
         
         # user role
         asset[ 'roles' ] = [ {
@@ -502,6 +520,13 @@ class ThotProject( ThotInterface ):
         asset[ 'creator_type' ] = 'script'
         asset[ 'creator' ] = os.environ[ 'THOT_SCRIPT_ID' ]
         
+        # get asset path to return
+        asset_path = asset[ 'file' ]
+        
+        # modify asset if needed
+        if self._driver:
+            asset = self._driver.input_asset( asset )
+        
         # create asset
         result = self._db.assets.insert_one( asset )
         
@@ -510,8 +535,16 @@ class ThotProject( ThotInterface ):
             { '_id': ObjectId( self._root ) },
             { '$push': { 'assets': result.inserted_id } }
         )
-        
-        return asset[ 'file' ]
+             
+        return asset_path
+    
+    
+    def exit( self ):
+        """
+        Triggers clean up.
+        """
+        if self._driver:
+            self._driver.flush_added_assets()
     
     
     @staticmethod
