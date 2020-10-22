@@ -8,6 +8,7 @@ import os
 import re
 import json
 import boto3
+import botocore
 
 from .driver_interface import DriverInterface
 
@@ -212,7 +213,6 @@ class ThotS3Driver( DriverInterface ):
         """
         file = os.path.join( os.environ[ 'THOT_SERVER_ROOT' ], file )
         bucket = self._get_bucket( bucket )
-        
         try:
             self._s3.download_file( 
                 Bucket = bucket, 
