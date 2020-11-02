@@ -729,7 +729,13 @@ if __name__ == '__main__':
         modified = util.remove_assets( assets, search )
         
     elif fcn == 'data_to_assets':
-        properties = _arg_to_json( args.assets )
+        try:
+            properties = _arg_to_json( args.assets )
+        
+        except json.decoder.JSONDecodeError:
+            # could not parse assets as json
+            # attempt as function
+            properties = eval( args.assets )
         
         defaults = [ '_id', 'rename' ]
         kwargs = set_defaults( args.kwargs, defaults )
