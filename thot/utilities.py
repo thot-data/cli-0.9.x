@@ -12,10 +12,11 @@ import json
 import shutil
 from glob import glob
 
-from .classes.base_object import BaseObjectJSONEncoder
-from .classes.container import Container
-from .classes.script import ScriptAssociation
-from .classes.asset import Asset
+from thot_core.classes.base_object import BaseObjectJSONEncoder
+from thot_core.classes.container import Container
+from thot_core.classes.script import ScriptAssociation
+from thot_core.classes.asset import Asset
+
 from .db import local
 
 

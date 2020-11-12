@@ -10,15 +10,12 @@
 import os
 from uuid import uuid4 as uuid
 
-from .db.local import LocalObject, LocalDB
-from .db.mongo import MongoDB # TODO [2]: Only required for hosted version, remove package dependency
-from bson.objectid import ObjectId
+from thot_core.classes.thot_interface import ThotInterface
+from thot_core.classes.container      import Container
+from thot_core.classes.asset          import Asset
+from thot_core.classes.script         import ScriptAssociation
 
-from .classes.thot_interface import ThotInterface
-from .classes.container      import Container
-from .classes.asset          import Asset
-from .classes.script         import ScriptAssociation
-from .drivers.drivers        import get_driver # TODO [2]: Only required for hosted version, remove package dependency
+from .db.local import LocalObject, LocalDB
 
 
 # ## Local

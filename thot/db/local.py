@@ -15,7 +15,7 @@ from glob import glob
 from functools import partial
 from collections.abc import Mapping
 
-from ..classes.resource import Resource, ResourceJSONEncoder
+from thot_core.classes.resource import Resource, ResourceJSONEncoder
 
 
 # ## Helper Functions

@@ -12,163 +12,42 @@ import json
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
-from bson.objectid import ObjectId
+from thot_core.runner import eval_tree
+from thot_core.classes.container import Container
 
 from .db.local import LocalDB
-from .db.mongo import MongoDB
-from .classes.container import Container
-from .drivers.drivers import get_driver
 
 
 # In[ ]:
 
 
-def run_script( script_id, script_path, container_id ):
+def script_info( root ):
     """
-    Runs the given program form the given Container.
+    Creates a function to return a Script's id and path.
+    For use with thot_core.runner#eval_tree.
     
-    :param script_id: ID of the script.
-    :param script_path: Path to the script.
-    :param container: ID of the container to run from.
-    :returns: Script output. Used for collecting added assets.
+    :param root: Path to root Container.
+    :returns: Function that accepts a Script's id as input,
+        and returns a tuple of ( <script id>, <script path> ).
     """
-    # setup environment
-    env = os.environ.copy()
-    env[ 'THOT_CONTAINER_ID' ] = container_id # set root container to be used by thot library
-    env[ 'THOT_SCRIPT_ID' ]    = script_id    # used in project for adding Assets
     
-    # TODO [0]: Ensure safely run
-    # run program
-    try:
-        return subprocess.check_output(
-            'python {}'.format( script_path ),
-            shell = True,
-            env = env
+    def _script_info( script_id ):
+        """
+        Gets information for the Script.
+        For use with thot_core.runner#eval_tree.
+
+        :param script_id: Script id.
+        :returns: Tuple of ( <script id>, <script path> ).
+        """
+         # local project script paths are prefixed by path id
+        script_id = os.path.normpath( # path to script
+            os.path.join( root, script_id )
         )
-        
-    except subprocess.CalledProcessError as err:
-        err.cmd = '[{}] '.format( container_id ) + err.cmd
-        raise err
-    
-    
-# TODO [2]: Allow running between certain depths.
-def eval_tree( 
-    root, 
-    db, 
-    scripts = None,
-    ignore_errors = False, 
-    multithread = False, 
-    verbose = False,
-    driver = None
-):
-    """
-    Runs scripts on the Container tree.
-    Uses DFS, running from bottom up.
-    
-    :param root: Container.
-    :param db: Database
-    :param scripts: List of scripts to run, or None for all. [Default: None]
-    :param ignore_errors: Continue running if an error is encountered. [Default: False]
-    :param multithread: Evaluate tree using multiple threads. [Default: False]
-        CAUTION: May decrease runtime, but also locks system and can not kill.
-    :param verbose: Print evaluation information. [Default: False]
-    :param driver: Driver used to modify script retrieval. [Default: None]
-    """
-    hosted = isinstance( db, MongoDB )
-    
-    if hosted:
-        root = ObjectId( root )
-        
-    root = db.containers.find_one( { '_id': root } )
-    root = Container( **root )
-    
-    # eval children
-    if multithread:
-        with ThreadPoolExecutor( max_workers = 10 ) as executer:
-            executer.map( 
-                lambda child: eval_tree( child, db, verbose = verbose ), 
-                root.children 
-            )
-        
-    else:
-        for child in root.children:
-            eval_tree( 
-                child, 
-                db, 
-                scripts       = scripts,
-                ignore_errors = ignore_errors,
-                multithread   = multithread,
-                verbose       = verbose,
-                driver        = driver
-            )
 
-    # TODO [1]: Check filtering works for local projects.
-    # filter scripts to run
-    root.scripts.sort()
-    run_scripts = (
-        root.scripts
-        if scripts is None else
-        filter( lambda assoc: assoc.script in scripts, root.scripts ) # filter scripts
-    )
+        # script id and path are the same
+        return ( script_id, script_id )
     
-    # eval self
-    added_assets = []
-    for association in run_scripts:
-        if not association.autorun:
-            continue
-
-        if hosted:
-            script_id = association.script
-            
-            # get script path
-            script = db._scripts.find_one( { 
-                '_id': ObjectId( script_id ) 
-            } )
-
-            script_path = script[ 'file' ]
-            if driver:
-                script_path = driver.get_script( script_path )
-            
-        else:
-            # local project script paths are prefixed by path id
-            script_id = script_path = os.path.normpath( # path to script
-                os.path.join( root._id, association.script )
-            )
-            
-        if verbose:
-            print( 'Running script {} on container {}'.format( script_id, root._id )  )
-            
-        try:
-            script_assets = run_script( 
-                str( script_id ), # convert ids from ObjectId, if necessary
-                script_path, 
-                str( root._id ) 
-            ) 
-            
-        except Exception as err:
-            if ignore_errors:
-                # TODO [2]: Only return errors after final exit.
-                # collect errors for output at end
-                print( '[{}] {}'.format( root._id, err ) )
-                
-            else:
-                raise err
-                
-        if driver:
-            script_assets = [ 
-                json.loads( asset ) for asset
-                in script_assets.decode().split( '\n' )
-                if asset
-            ]
-            
-            driver.added_assets += script_assets
-            
-
-    if driver:
-        driver.flush_added_assets()
-
-
-# In[ ]:
+    return _script_info 
 
 
 def run_local( root, **kwargs ):
@@ -179,34 +58,13 @@ def run_local( root, **kwargs ):
     :param kwargs: Arguments passed to #eval_tree 
     """
     db = LocalDB( root )
-    
+
     # parse scripts if present
     if kwargs[ 'scripts' ] is not None:
         kwargs[ 'scripts' ] = [ db.parse_path( path ) for path in kwargs[ 'scripts' ] ]
     
-    eval_tree( root, db, **kwargs )
-    
-    
-def run_hosted( user, root, **kwargs ):
-    """
-    Runs a hosted project.
-    
-    :param user: ID of user.
-    :param root: ID of root Container.
-    :param kwargs: Arguments passed to #eval_tree.
-    """
-    os.environ[ 'THOT_USER_ID' ] = user
-    
-    # get driver
-    if 'driver' in kwargs:
-        driver = get_driver( kwargs[ 'driver' ] )
-        kwargs[ 'driver' ] = driver( 
-            os.environ[ 'AWS_ACCESS_KEY_ID' ], 
-            os.environ[ 'AWS_SECRET_ACCESS_KEY' ]
-        )
-    
-    db = MongoDB()
-    eval_tree( root, db, **kwargs )
+    si = script_info( root )
+    eval_tree( root, db, si, **kwargs )
 
 
 # In[ ]:
@@ -224,14 +82,6 @@ if __name__ == '__main__':
         type = str,
         default = '.',
         help = 'Path or ID of the root Container.'
-    )
-    
-    parser.add_argument(
-        '-env', '--environment',
-        type = str,
-        choices = [ 'local', 'hosted' ],
-        default = 'local',
-        help = 'Environment of the runner.'
     )
     
     parser.add_argument(
@@ -290,26 +140,13 @@ if __name__ == '__main__':
     
     scripts = json.loads( args.scripts ) if args.scripts else None
 
-    if args.environment == 'local':
-        run_local( 
-            os.path.abspath( args.root ), 
-            scripts       = scripts,
-            ignore_errors = args.ignore_errors, 
-            multithread   = args.multithread,
-            verbose       = args.verbose 
-        )
-        
-    elif args.environment == 'hosted':
-        if not args.user:
-            raise RuntimeError( 'User is required for runner in a hosted environment.' )
-        
-        run_hosted( 
-            args.user, 
-            args.root,
-            scripts = scripts,
-            verbose = args.verbose,
-            driver = args.driver
-        )
+    run_local( 
+        os.path.abspath( args.root ), 
+        scripts       = scripts,
+        ignore_errors = args.ignore_errors, 
+        multithread   = args.multithread,
+        verbose       = args.verbose 
+    )
 
 
 # # Work
