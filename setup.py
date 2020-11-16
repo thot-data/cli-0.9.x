@@ -18,7 +18,7 @@ project_urls = {
 
 setuptools.setup(
 	name='thot-data',
-	version = '0.3.0',
+	version = '0.4.0',
 	author='Brian Carlsen',
 	author_email = 'carlsen.bri@gmail.com',
 	description = 'Thot data analysis and management.',

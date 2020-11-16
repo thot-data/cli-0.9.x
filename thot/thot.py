@@ -23,7 +23,7 @@ from .db.local import LocalObject, LocalDB
 # In[ ]:
 
 
-class LocalProject( ThotInterface ):
+class ThotProject( ThotInterface ):
     """
     Local Thot project interface, used to retrieve Containers and Assests.
     """
@@ -63,7 +63,7 @@ class LocalProject( ThotInterface ):
         if result is None:
             return None
         
-        container = LocalProject._object_to_container( result )
+        container = ThotProject._object_to_container( result )
         return container
     
     
@@ -79,7 +79,7 @@ class LocalProject( ThotInterface ):
         
         containers = []
         for res in result:
-            containers.append( LocalProject._object_to_container( res ) )
+            containers.append( ThotProject._object_to_container( res ) )
     
         return containers    
 
@@ -190,7 +190,7 @@ class LocalProject( ThotInterface ):
         container = dict( obj )
         
         # sort children
-        kinds = LocalProject._sort_objects( obj.children )
+        kinds = ThotProject._sort_objects( obj.children )
 
         container[ 'children' ] = [ child._id  for child  in kinds[ 'container' ] ]
         container[ 'assets' ]   = [ asset._id  for asset  in kinds[ 'asset' ] ]

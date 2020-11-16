@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# # Runner
+# # Runner Local
 
 # In[ ]:
 
@@ -12,7 +12,7 @@ import json
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
-from thot_core.runner import eval_tree
+from thot_core.runner import Runner
 from thot_core.classes.container import Container
 
 from .db.local import LocalDB
@@ -21,33 +21,81 @@ from .db.local import LocalDB
 # In[ ]:
 
 
-def script_info( root ):
+class LocalRunner( Runner ):
     """
-    Creates a function to return a Script's id and path.
-    For use with thot_core.runner#eval_tree.
-    
-    :param root: Path to root Container.
-    :returns: Function that accepts a Script's id as input,
-        and returns a tuple of ( <script id>, <script path> ).
+    Local project runner.
     """
     
-    def _script_info( script_id ):
+    def __init__( self, db ):
         """
-        Gets information for the Script.
-        For use with thot_core.runner#eval_tree.
-
-        :param script_id: Script id.
-        :returns: Tuple of ( <script id>, <script path> ).
+        Creates a new Local Runner.
+        Registers built in hooks.
+        
+        :param db: Database to use.
         """
-         # local project script paths are prefixed by path id
-        script_id = os.path.normpath( # path to script
-            os.path.join( root, script_id )
-        )
-
-        # script id and path are the same
-        return ( script_id, script_id )
+        Runner.__init__( self )
+        self.db = db
+        
+        # register runner hooks
+        self.register( 'get_container', self.get_container() )
+        self.register( 'get_script_info', self.script_info() )
     
-    return _script_info 
+    
+    def script_info( self ):
+        """
+        Creates a function to return a Script's id and path.
+        Uses the Runner's database.
+
+        :returns: Function that accepts a Script's id as input,
+            and returns a tuple of ( <script id>, <script path> ).
+        """
+
+        def _script_info( script_id ):
+            """
+            Gets information for the Script.
+            For use with thot_core.runner#eval_tree.
+
+            :param script_id: Script id.
+            :returns: Tuple of ( <script id>, <script path> ).
+            """
+             # local project script paths are prefixed by path id
+            script_id = os.path.normpath( # path to script
+                os.path.join( self.db.root, script_id )
+            )
+
+            # script id and path are the same
+            return ( script_id, script_id )
+
+        return _script_info 
+
+
+    def get_container( self ):
+        """
+        Creates a Container getter function.
+        Uses the Runner's database.
+        
+        :returns: Function that accepts a root id and returns the corresponding Container.
+        """
+
+        def _get_container( _id ):
+            """
+            Gets a Container by id.
+
+            :param _id: Id of Container.
+            :returns: Container.
+            :raises: Error if Container is not found.
+            """
+            root = self.db.containers.find_one( { '_id': _id } )
+
+            if root is None:
+                raise Error( 'Could not find Container at {}.'.format( _id ) )
+
+            return root
+
+        return _get_container
+
+
+# In[ ]:
 
 
 def run_local( root, **kwargs ):
@@ -58,13 +106,13 @@ def run_local( root, **kwargs ):
     :param kwargs: Arguments passed to #eval_tree 
     """
     db = LocalDB( root )
-
+    runner = LocalRunner( db )    
+    
     # parse scripts if present
     if kwargs[ 'scripts' ] is not None:
         kwargs[ 'scripts' ] = [ db.parse_path( path ) for path in kwargs[ 'scripts' ] ]
     
-    si = script_info( root )
-    eval_tree( root, db, si, **kwargs )
+    runner.eval_tree( root, **kwargs )
 
 
 # In[ ]:
@@ -150,13 +198,3 @@ if __name__ == '__main__':
 
 
 # # Work
-
-# In[ ]:
-
-
-# root = os.path.normpath(
-#     os.path.join( os.getcwd(), '../_tests/projects/inclined-plane' )
-# )
-
-# run_local( root )
-
