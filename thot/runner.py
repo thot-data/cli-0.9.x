@@ -98,7 +98,7 @@ class LocalRunner( Runner ):
 # In[ ]:
 
 
-def run_local( root, **kwargs ):
+def run( root, **kwargs ):
     """
     Runs programs bottom up for local projects.
     
@@ -109,7 +109,10 @@ def run_local( root, **kwargs ):
     runner = LocalRunner( db )    
     
     # parse scripts if present
-    if kwargs[ 'scripts' ] is not None:
+    if (
+        ( 'scripts' in kwargs ) and 
+        ( kwargs[ 'scripts' ] is not None )
+    ):        
         kwargs[ 'scripts' ] = [ db.parse_path( path ) for path in kwargs[ 'scripts' ] ]
     
     runner.eval_tree( root, **kwargs )
@@ -130,12 +133,6 @@ if __name__ == '__main__':
         type = str,
         default = '.',
         help = 'Path or ID of the root Container.'
-    )
-    
-    parser.add_argument(
-        '-u', '--user',
-        type = str,
-        help = 'User ID. Required for hosted environment.'
     )
     
     # TODO [1]
@@ -176,19 +173,13 @@ if __name__ == '__main__':
         help = 'Print evaluation information.'
     )
     
-    parser.add_argument(
-        '-d', '--driver',
-        type = str,
-        required = False,
-        help = 'Driver used to retrieve scripts.'
-    )
     
     
     args = parser.parse_args()
     
     scripts = json.loads( args.scripts ) if args.scripts else None
 
-    run_local( 
+    run( 
         os.path.abspath( args.root ), 
         scripts       = scripts,
         ignore_errors = args.ignore_errors, 
@@ -197,4 +188,3 @@ if __name__ == '__main__':
     )
 
 
-# # Work

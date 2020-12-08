@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Local Database
@@ -80,7 +80,7 @@ class LocalObject( Mapping ):
         ]
         
         # check only only one property file
-        if len( obj_file ) is not 1:
+        if len( obj_file ) != 1:
             # not only one property file found
             raise RuntimeError( 
                 '{} object file(s) found. Must have one and only one'.format( len( obj_file ) )
@@ -533,7 +533,7 @@ class LocalCollection():
         
         return (
             None 
-            if ( len( result ) is 0 ) else 
+            if ( len( result ) == 0 ) else 
             result[ 0 ]
         )
     
@@ -541,6 +541,7 @@ class LocalCollection():
     def find( self, search = {} ):
         """
         Gets objects matching search criteria.
+        Use dot notation for re
         
         :param search: Dictionary of property-value pairs to filter.
             If {} returns all objects.
@@ -557,7 +558,6 @@ class LocalCollection():
                 :param obj: LocalObject.
                 :returns: True if matches, False otherwise.
                 """
-                # TODO [1]: Children should inherit metadata from ancestors for searches
                 # parse prop
                 prop_path = prop.split( '.' )
                 for part in prop_path:
@@ -574,7 +574,12 @@ class LocalCollection():
                     if isinstance( obj, list ):
                         # object is list, verfiy all values are in object
                         for item in value:
-                            if item not in ob:
+                            if isinstance( item, re.Pattern ):
+                                # value is regex
+                                match = item.search( value )
+                                return ( match is None )
+                            
+                            if item not in obj:
                                 # search item not obj 
                                 return false
                             
@@ -587,8 +592,13 @@ class LocalCollection():
                 
                 else:
                     # value is not list, check for direct match
+                    if isinstance( value, re.Pattern ):
+                        # value is regex
+                        match = value.search( obj )
+                        return ( match is not None )
+                    
+                    # simple value
                     return ( obj == value )
-                
                
         
         matching = self.__objects
@@ -789,4 +799,10 @@ class LocalDB():
 
 # for c in db.assets.find():
 #     print(  c.meta )
+
+
+# In[ ]:
+
+
+
 
