@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Runner Local
@@ -112,7 +112,7 @@ def run( root, **kwargs ):
     if (
         ( 'scripts' in kwargs ) and 
         ( kwargs[ 'scripts' ] is not None )
-    ):        
+    ):
         kwargs[ 'scripts' ] = [ db.parse_path( path ) for path in kwargs[ 'scripts' ] ]
     
     runner.eval_tree( root, **kwargs )
@@ -172,9 +172,7 @@ if __name__ == '__main__':
         action = 'store_true',
         help = 'Print evaluation information.'
     )
-    
-    
-    
+       
     args = parser.parse_args()
     
     scripts = json.loads( args.scripts ) if args.scripts else None
@@ -188,3 +186,4 @@ if __name__ == '__main__':
     )
 
 
+# # Work

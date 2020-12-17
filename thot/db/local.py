@@ -9,6 +9,7 @@
 import os
 import re
 import json
+import typing
 from pathlib import Path
 from datetime import datetime
 from glob import glob
@@ -574,7 +575,7 @@ class LocalCollection():
                     if isinstance( obj, list ):
                         # object is list, verfiy all values are in object
                         for item in value:
-                            if isinstance( item, re.Pattern ):
+                            if isinstance( item, typing.Pattern ):
                                 # value is regex
                                 match = item.search( value )
                                 return ( match is None )
@@ -592,7 +593,7 @@ class LocalCollection():
                 
                 else:
                     # value is not list, check for direct match
-                    if isinstance( value, re.Pattern ):
+                    if isinstance( value, typing.Pattern ):
                         # value is regex
                         match = value.search( obj )
                         return ( match is not None )
