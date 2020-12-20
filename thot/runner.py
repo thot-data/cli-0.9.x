@@ -85,10 +85,11 @@ class LocalRunner( Runner ):
             :returns: Container.
             :raises: Error if Container is not found.
             """
+            _id = os.path.normpath( _id )
             root = self.db.containers.find_one( { '_id': _id } )
 
             if root is None:
-                raise Error( 'Could not find Container at {}.'.format( _id ) )
+                raise RuntimeError( 'Could not find Container at {}.'.format( _id ) )
 
             return root
 
