@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Project Utilities
@@ -332,7 +332,7 @@ class ThotUtilities():
         Converts multiple data fiels to assets.
 
         :param path: Path to the data file. 
-        :param search: Glob to limit data ffiles converted or None to convert all in path.
+        :param search: Glob to limit data files converted or None to convert all in path.
             [Default: None]
         :param properties: Dictionary or callable to use as properties or None to only set the 'file'. 
             If callable will be run with the full path of the data as the argument,
@@ -653,7 +653,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-s', '--search',
         type = str,
-        help = 'JSON object describing Containers to target.'
+        help = 'JSON object or glob describing Containers to target. Format depends on function.'
     )
     
     parser.add_argument(
@@ -812,4 +812,10 @@ if __name__ == '__main__':
 
 
 # util.add_scripts( [{ 'script': 'new', 'priority': 0, 'autorun': True}], { 'type': 'project'} )
+
+
+# In[ ]:
+
+
+
 

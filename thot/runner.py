@@ -9,6 +9,7 @@
 import os
 import sys
 import json
+import logging
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
@@ -109,6 +110,9 @@ def run( root, **kwargs ):
     db = LocalDB( root )
     runner = LocalRunner( db )    
     
+    if ( 'verbose' in kwargs ) and kwargs[ 'verbose' ]:
+        logging.basicConfig( level = logging.INFO )
+        
     # parse scripts if present
     if (
         ( 'scripts' in kwargs ) and 
@@ -127,6 +131,24 @@ if __name__ == '__main__':
     Runs a Thot Project from console.
     """
     from argparse import ArgumentParser
+    
+    def parse_optional_int_arg( arg ):
+        """
+        Parses an argument value if it takes an optional integer argument.
+        
+        :param arg: Argument value.
+        :returns: True if arg is None, False is arg is False, arg as integer otherwise.
+        """
+        if arg is None:
+            # indicates flag was present, but no value passed
+            return True
+
+        if arg is False:
+            return False
+        
+        return int( arg )
+    
+    
     parser = ArgumentParser( description = 'Thot project runner for Python.' )
     
     parser.add_argument(
@@ -164,8 +186,24 @@ if __name__ == '__main__':
     
     parser.add_argument(
         '--multithread',
-        action = 'store_true',
+        nargs = '?',
+        default = False,
+        action = 'store',
         help = 'Execute tree using multiple threads. CAUTION: May lock system, can not force quit.'
+    )
+    
+    parser.add_argument(
+        '--async',
+        action = 'store_true',
+        help = 'Execute tree asynchronously. CAUTION: May lock system, can not force quit.'
+    )
+    
+    parser.add_argument(
+        '--multiprocess',
+        nargs = '?',
+        default = False,
+        action = 'store',
+        help = 'Execute tree using multiple processes. CAUTION: May lock system, can not force quit.'
     )
     
     parser.add_argument(
@@ -177,12 +215,17 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     scripts = json.loads( args.scripts ) if args.scripts else None
+    
+    multithread  = parse_optional_int_arg( args.multithread )
+    multiprocess = parse_optional_int_arg( args.multiprocess )
 
     run( 
         os.path.abspath( args.root ), 
         scripts       = scripts,
         ignore_errors = args.ignore_errors, 
-        multithread   = args.multithread,
+        multithread   = multithread,
+        asynchronous  = vars( args )[ 'async' ], # must retrieve as dictionary because async is reserved keyword.
+        multiprocess  = multiprocess,
         verbose       = args.verbose 
     )
 
