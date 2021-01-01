@@ -11,6 +11,7 @@ import sys
 import json
 import logging
 import subprocess
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 from thot_core.runner import Runner
@@ -120,7 +121,7 @@ def run( root, **kwargs ):
     ):
         kwargs[ 'scripts' ] = [ db.parse_path( path ) for path in kwargs[ 'scripts' ] ]
     
-    runner.eval_tree( root, **kwargs )
+    asyncio.run( runner.eval_tree( root, **kwargs ) )
 
 
 # In[ ]:
@@ -185,47 +186,18 @@ if __name__ == '__main__':
     )
     
     parser.add_argument(
-        '--multithread',
-        nargs = '?',
-        default = False,
-        action = 'store',
-        help = 'Execute tree using multiple threads. CAUTION: May lock system, can not force quit.'
-    )
-    
-    parser.add_argument(
-        '--async',
-        action = 'store_true',
-        help = 'Execute tree asynchronously. CAUTION: May lock system, can not force quit.'
-    )
-    
-    parser.add_argument(
-        '--multiprocess',
-        nargs = '?',
-        default = False,
-        action = 'store',
-        help = 'Execute tree using multiple processes. CAUTION: May lock system, can not force quit.'
-    )
-    
-    parser.add_argument(
         '--verbose',
         action = 'store_true',
         help = 'Print evaluation information.'
     )
        
     args = parser.parse_args()
-    
     scripts = json.loads( args.scripts ) if args.scripts else None
     
-    multithread  = parse_optional_int_arg( args.multithread )
-    multiprocess = parse_optional_int_arg( args.multiprocess )
-
     run( 
         os.path.abspath( args.root ), 
         scripts       = scripts,
         ignore_errors = args.ignore_errors, 
-        multithread   = multithread,
-        asynchronous  = vars( args )[ 'async' ], # must retrieve as dictionary because async is reserved keyword.
-        multiprocess  = multiprocess,
         verbose       = args.verbose 
     )
 
