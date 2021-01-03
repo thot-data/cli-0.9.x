@@ -154,8 +154,13 @@ class LocalObject( Mapping ):
                 created = datetime.fromtimestamp( stats.st_mtime ).isoformat( ' ' )
 
                 with open( note_path, 'r' ) as f:
-                    content = f.read()
+                    try:
+                        content = f.read()
 
+                    except UnicodeDecodeError as err:
+                        # not a utf-8 file
+                        content = None
+                        
                 self.__notes.append( {
                     'title':   os.path.splitext( note )[ 0 ],
                     'created': created,
