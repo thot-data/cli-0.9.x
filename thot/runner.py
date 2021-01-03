@@ -238,7 +238,7 @@ if __name__ == '__main__':
         
         return int( arg )
     
-    
+    py_version = sys.version_info.major + 0.1* sys.version_info.minor
     parser = ArgumentParser( description = 'Thot project runner for Python.' )
     
     parser.add_argument(
@@ -279,16 +279,56 @@ if __name__ == '__main__':
         action = 'store_true',
         help = 'Print evaluation information.'
     )
+    
+    
+    if py_version < 3.7:
+        parser.add_argument(
+            '--multithread',
+            nargs = '?',
+            default = False,
+            action = 'store',
+            help = 'Execute tree using multiple threads. CAUTION: May lock system, can not force quit.'
+        )
+
+        parser.add_argument(
+            '--async',
+            action = 'store_true',
+            help = 'Execute tree asynchronously. CAUTION: May lock system, can not force quit.'
+        )
+
+        parser.add_argument(
+            '--multiprocess',
+            nargs = '?',
+            default = False,
+            action = 'store',
+            help = 'Execute tree using multiple processes. CAUTION: May lock system, can not force quit.'
+        )
+    
        
     args = parser.parse_args()
     scripts = json.loads( args.scripts ) if args.scripts else None
     
-    run( 
+    if py_version >= 3.7:
+        run( 
         os.path.abspath( args.root ), 
         scripts       = scripts,
         ignore_errors = args.ignore_errors, 
         verbose       = args.verbose 
     )
+        
+    else:
+        multithread  = parse_optional_int_arg( args.multithread )
+        multiprocess = parse_optional_int_arg( args.multiprocess )
+        
+        run( 
+            os.path.abspath( args.root ), 
+            scripts       = scripts,
+            ignore_errors = args.ignore_errors, 
+            multithread   = multithread,
+            asynchronous  = vars( args )[ 'async' ], # must retrieve as dictionary because async is reserved keyword.
+            multiprocess  = multiprocess,
+            verbose       = args.verbose 
+        )
 
 
 # # Work
