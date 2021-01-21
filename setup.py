@@ -30,7 +30,7 @@ setuptools.setup(
 	classifiers = classifiers,
 	
 	install_requires = [
-		'thot-core'
+		'thot-core>=0.4.5'
 	],
 
 	package_data = {

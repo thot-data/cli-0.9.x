@@ -8,6 +8,7 @@
 
 
 import os
+import inspect
 from uuid import uuid4 as uuid
 
 from thot_core.classes.thot_interface import ThotInterface
@@ -126,9 +127,19 @@ class ThotProject( ThotInterface ):
             [Default: True]
         :returns: Path to Asset file.
         """
+        def _get_caller_id():
+            """
+            :returns: File name of the caller.
+            """
+            caller = inspect.currentframe().f_back()
+            info = inspect.getframeinfo( caller )
+            return info.filename
+            
+        
         # check file is defined
         if 'file' not in asset:
             _id = str( uuid() )
+            asset[ 'file' ] = _id
         
         if _id is None:
             _id = str( uuid() )
@@ -138,7 +149,7 @@ class ThotProject( ThotInterface ):
         asset[ 'creator' ] = (
             os.environ[ 'THOT_SCRIPT_ID' ]
             if 'THOT_SCRIPT_ID' in os.environ else
-            __file__
+            _get_caller_id()
         )
             
         path = os.path.normpath( 
