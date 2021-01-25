@@ -13,6 +13,7 @@ import typing
 from pathlib import Path
 from datetime import datetime
 from glob import glob
+from tempfile import NamedTemporaryFile
 from functools import partial
 from collections.abc import Mapping
 
@@ -37,7 +38,7 @@ def _load_json( path ):
             return json.load( f )
 
         except json.decoder.JSONDecodeError as err:
-            raise json.decoder.JSONDecodeError( '{} of {}'.format( err, path ), err.doc, err.pos )
+            raise json.decoder.JSONDecodeError( f'{ err } of { path }', err.doc, err.pos )
 
 
 # ## Document Objects
@@ -709,8 +710,12 @@ class LocalCollection():
         """
         json_encoder = ResourceJSONEncoder if isinstance( properties, Resource ) else None
 
-        with open( path, 'w' ) as f:
-            json.dump( properties, f, cls = json_encoder, indent = 4 )
+        with NamedTemporaryFile( mode = 'w+t', delete = False ) as tf:
+            # create file as temp file then move to path
+            # prevents race condition of file being created
+            # and another Thot instantiation reading the file before it is written.
+            json.dump( properties, tf, cls = json_encoder, indent = 4 )
+            os.rename( tf.name, path )
 
 
 # In[ ]:

@@ -131,7 +131,7 @@ class ThotProject( ThotInterface ):
             """
             :returns: File name of the caller.
             """
-            caller = inspect.currentframe().f_back()
+            caller = inspect.currentframe().f_back.f_back
             info = inspect.getframeinfo( caller )
             return info.filename
             

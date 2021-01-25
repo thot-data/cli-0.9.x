@@ -304,17 +304,39 @@ if __name__ == '__main__':
             help = 'Execute tree using multiple processes. CAUTION: May lock system, can not force quit.'
         )
     
+    else:
+        parser.add_argument(
+            '-t', '--tasks',
+            nargs = '?',
+            default = False,
+            action = 'store',
+            help = 'Execute tree using multiple processes. CAUTION: May lock system, can not force quit.'
+        )
+    
        
     args = parser.parse_args()
     scripts = json.loads( args.scripts ) if args.scripts else None
     
     if py_version >= 3.7:
+        # tasks
+        if args.tasks is False:
+            # tasks not provided
+            tasks = None
+        
+        else:    
+            # tasks provided
+            tasks = parse_optional_int_arg( args.tasks )
+            if tasks is True:
+                # default value
+                tasks = 10
+            
         run( 
-        os.path.abspath( args.root ), 
-        scripts       = scripts,
-        ignore_errors = args.ignore_errors, 
-        verbose       = args.verbose 
-    )
+            os.path.abspath( args.root ), 
+            scripts       = scripts,
+            tasks         = tasks,
+            ignore_errors = args.ignore_errors, 
+            verbose       = args.verbose 
+        )
         
     else:
         multithread  = parse_optional_int_arg( args.multithread )
