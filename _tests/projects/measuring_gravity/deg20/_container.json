@@ -1,0 +1,13 @@
+{
+	"name": "Sample 1",
+	"type": "sample",
+	"description": "Sample 1",
+
+	"tags": [],
+
+	"metadata": {
+		"angle": 20,
+		"material": "wood"
+	}
+
+}

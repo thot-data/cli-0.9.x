@@ -1,0 +1,18 @@
+{
+    "_id": "0.",
+    "created": "2020-04-11T08:13:04",
+    "type": "reference",
+    "name": "Timer Accuracy",
+    "description": null,
+    "roles": [],
+    "tags": [
+        "timer",
+        "accuracy"
+    ],
+    "notes": [],
+    "metadata": {},
+    "file": "root:/_references/timer_accuracy/timer_accuracy.csv",
+    "parent": null,
+    "creator": null,
+    "creator_type": null
+}

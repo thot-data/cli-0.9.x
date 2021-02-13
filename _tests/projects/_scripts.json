@@ -1,0 +1,7 @@
+[
+	{
+		"script": 	"path/to/script.py",
+		"priority": 0,
+		"autorun": 	false
+	}
+]

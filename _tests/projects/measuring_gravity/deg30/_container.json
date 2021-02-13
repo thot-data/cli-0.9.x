@@ -1,0 +1,13 @@
+{
+	"name": "30 Degrees",
+	"type": "sample",
+	"description": "Sample 2",
+
+	"tags": [],
+
+	"metadata": {
+		"angle": 30,
+		"material": "wood"
+	}
+
+}

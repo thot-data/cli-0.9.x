@@ -1,0 +1,13 @@
+{
+	"name": "Timer Accuracy",
+	"type": "reference",
+	"file": "timer_accuracy.csv",
+	"description": "Accuracy measurements for timer used for all experiments. Data is the standrad deviation of the timer during reference tests.",
+
+	"tags": [],
+	
+	"metadata": {},
+
+	"creator": "",
+	"creator_type": "user"
+}

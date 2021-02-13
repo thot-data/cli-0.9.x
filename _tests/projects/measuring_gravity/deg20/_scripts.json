@@ -1,0 +1,7 @@
+[
+    {
+        "script": "root:/scripts/times_data_prep.py",
+        "priority": 0,
+        "autorun": true
+    }
+]

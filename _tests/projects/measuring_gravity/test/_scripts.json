@@ -1,0 +1,8 @@
+[
+    {
+        "script": "test.py"
+    },
+    {
+        "script": "../test.py"
+    }
+]

@@ -1,0 +1,7 @@
+{
+    "file": "stats.csv",
+    "type": "stats",
+    "name": "Sample 1 Stats",
+    "creator_type": "script",
+    "creator": "/home/bric/Dropbox/Documents/www/thot/lib/_tests/projects/inclined-plane/scripts/times_data_prep.py"
+}

@@ -310,7 +310,7 @@ if __name__ == '__main__':
             nargs = '?',
             default = False,
             action = 'store',
-            help = 'Execute tree using multiple processes. CAUTION: May lock system, can not force quit.'
+            help = 'Limit the number of concurrent tasks. If flag is not provided no limit is used. If flag is provided but no value is given, default values is 16.'
         )
     
        
@@ -328,7 +328,7 @@ if __name__ == '__main__':
             tasks = parse_optional_int_arg( args.tasks )
             if tasks is True:
                 # default value
-                tasks = 10
+                tasks = 16
             
         run( 
             os.path.abspath( args.root ), 
