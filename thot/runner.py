@@ -1,49 +1,39 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Runner Local
-
-# In[ ]:
-
+# Runner Local
 
 import os
 import sys
 import json
 import logging
-import subprocess
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
 
 from thot_core import Runner
 from thot_core.runners.runner_multithread import Runner as RunnerMultithread
-from thot_core.classes.container import Container
 
 from .db.local import LocalDB
-
-
-# In[ ]:
 
 
 class LocalRunner( Runner ):
     """
     Local project runner.
     """
-    
+
     def __init__( self, db ):
         """
         Creates a new Local Runner.
         Registers built in hooks.
-        
+
         :param db: Database to use.
         """
         Runner.__init__( self )
         self.db = db
-        
+
         # register runner hooks
         self.register( 'get_container', self.get_container() )
         self.register( 'get_script_info', self.script_info() )
-    
-    
+
+
     def script_info( self ):
         """
         Creates a function to return a Script's id and path.
@@ -61,22 +51,22 @@ class LocalRunner( Runner ):
             :param script_id: Script id.
             :returns: Tuple of ( <script id>, <script path> ).
             """
-             # local project script paths are prefixed by path id
-            script_id = os.path.normpath( # path to script
+            # local project script paths are prefixed by path id
+            script_id = os.path.normpath(  # path to script
                 os.path.join( self.db.root, script_id )
             )
 
             # script id and path are the same
             return ( script_id, script_id )
 
-        return _script_info 
+        return _script_info
 
 
     def get_container( self ):
         """
         Creates a Container getter function.
         Uses the Runner's database.
-        
+
         :returns: Function that accepts a root id and returns the corresponding Container.
         """
 
@@ -97,31 +87,28 @@ class LocalRunner( Runner ):
             return root
 
         return _get_container
-
-
-# In[ ]:
 
 
 class LocalRunnerMultithread( RunnerMultithread ):
     """
     Local project runner.
     """
-    
+
     def __init__( self, db ):
         """
         Creates a new Local Runner.
         Registers built in hooks.
-        
+
         :param db: Database to use.
         """
         Runner.__init__( self )
         self.db = db
-        
+
         # register runner hooks
         self.register( 'get_container', self.get_container() )
         self.register( 'get_script_info', self.script_info() )
-    
-    
+
+
     def script_info( self ):
         """
         Creates a function to return a Script's id and path.
@@ -139,22 +126,22 @@ class LocalRunnerMultithread( RunnerMultithread ):
             :param script_id: Script id.
             :returns: Tuple of ( <script id>, <script path> ).
             """
-             # local project script paths are prefixed by path id
-            script_id = os.path.normpath( # path to script
+            # local project script paths are prefixed by path id
+            script_id = os.path.normpath(  # path to script
                 os.path.join( self.db.root, script_id )
             )
 
             # script id and path are the same
             return ( script_id, script_id )
 
-        return _script_info 
+        return _script_info
 
 
     def get_container( self ):
         """
         Creates a Container getter function.
         Uses the Runner's database.
-        
+
         :returns: Function that accepts a root id and returns the corresponding Container.
         """
 
@@ -177,43 +164,37 @@ class LocalRunnerMultithread( RunnerMultithread ):
         return _get_container
 
 
-# In[ ]:
-
-
 def run( root, **kwargs ):
     """
     Runs programs bottom up for local projects.
-    
+
     :param root: Path to root.
-    :param kwargs: Arguments passed to #eval_tree 
+    :param kwargs: Arguments passed to #eval_tree
     """
     py_version = sys.version_info.major + 0.1* sys.version_info.minor
-    
+
     db = LocalDB( root )
-    runner = ( 
+    runner = (
         LocalRunner( db )
         if py_version >= 3.7 else
         LocalRunnerMultithread( db )
     )
-    
+
     if ( 'verbose' in kwargs ) and kwargs[ 'verbose' ]:
         logging.basicConfig( level = logging.INFO )
-        
+
     # parse scripts if present
     if (
-        ( 'scripts' in kwargs ) and 
+        ( 'scripts' in kwargs ) and
         ( kwargs[ 'scripts' ] is not None )
     ):
         kwargs[ 'scripts' ] = [ db.parse_path( path ) for path in kwargs[ 'scripts' ] ]
-    
+
     if isinstance( runner, LocalRunner ):
         runner.eval_tree_sync( root, **kwargs )
-        
+
     else:
         runner.eval_tree( root, **kwargs )
-
-
-# In[ ]:
 
 
 if __name__ == '__main__':
@@ -221,11 +202,11 @@ if __name__ == '__main__':
     Runs a Thot Project from console.
     """
     from argparse import ArgumentParser
-    
+
     def parse_optional_int_arg( arg ):
         """
         Parses an argument value if it takes an optional integer argument.
-        
+
         :param arg: Argument value.
         :returns: True if arg is None, False is arg is False, arg as integer otherwise.
         """
@@ -235,19 +216,19 @@ if __name__ == '__main__':
 
         if arg is False:
             return False
-        
+
         return int( arg )
-    
+
     py_version = sys.version_info.major + 0.1* sys.version_info.minor
     parser = ArgumentParser( description = 'Thot project runner for Python.' )
-    
+
     parser.add_argument(
         '-r', '--root',
         type = str,
         default = '.',
         help = 'Path or ID of the root Container.'
     )
-    
+
     # TODO [1]
 #     parser.add_argument(
 #         '-s', '--search',
@@ -261,26 +242,26 @@ if __name__ == '__main__':
 #         type = number,
 #         help = 'Maximum depth of the tree to run. Exclude for all.'
 #     )
-    
+
     parser.add_argument(
         '--scripts',
         type = str,
         help = 'List of scripts to run. Exclude for all.'
     )
-    
+
     parser.add_argument(
         '--ignore-errors',
         action = 'store_true',
         help = 'Ignore exceptions, continuing evaluation.'
     )
-    
+
     parser.add_argument(
         '--verbose',
         action = 'store_true',
         help = 'Print evaluation information.'
     )
-    
-    
+
+
     if py_version < 3.7:
         parser.add_argument(
             '--multithread',
@@ -303,7 +284,7 @@ if __name__ == '__main__':
             action = 'store',
             help = 'Execute tree using multiple processes. CAUTION: May lock system, can not force quit.'
         )
-    
+
     else:
         parser.add_argument(
             '-t', '--tasks',
@@ -312,45 +293,42 @@ if __name__ == '__main__':
             action = 'store',
             help = 'Limit the number of concurrent tasks. If flag is not provided no limit is used. If flag is provided but no value is given, default values is 16.'
         )
-    
-       
+
+
     args = parser.parse_args()
     scripts = json.loads( args.scripts ) if args.scripts else None
-    
+
     if py_version >= 3.7:
         # tasks
         if args.tasks is False:
             # tasks not provided
             tasks = None
-        
-        else:    
+
+        else:
             # tasks provided
             tasks = parse_optional_int_arg( args.tasks )
             if tasks is True:
                 # default value
                 tasks = 16
-            
-        run( 
-            os.path.abspath( args.root ), 
+
+        run(
+            os.path.abspath( args.root ),
             scripts       = scripts,
             tasks         = tasks,
-            ignore_errors = args.ignore_errors, 
-            verbose       = args.verbose 
+            ignore_errors = args.ignore_errors,
+            verbose       = args.verbose
         )
-        
+
     else:
         multithread  = parse_optional_int_arg( args.multithread )
         multiprocess = parse_optional_int_arg( args.multiprocess )
-        
-        run( 
-            os.path.abspath( args.root ), 
+
+        run(
+            os.path.abspath( args.root ),
             scripts       = scripts,
-            ignore_errors = args.ignore_errors, 
+            ignore_errors = args.ignore_errors,
             multithread   = multithread,
             asynchronous  = vars( args )[ 'async' ], # must retrieve as dictionary because async is reserved keyword.
             multiprocess  = multiprocess,
-            verbose       = args.verbose 
+            verbose       = args.verbose
         )
-
-
-# # Work
