@@ -533,7 +533,7 @@ class LocalCollection():
     def find( self, search = {} ):
         """
         Gets objects matching search criteria.
-        Use dot notation for re
+        Use dot notation for deep items.
 
         :param search: Dictionary of property-value pairs to filter.
             If {} returns all objects.
@@ -547,7 +547,7 @@ class LocalCollection():
             Check if object matched property filter.
 
             :param prop: Name of the property to check.
-            :param value: Value to match, or Dictionary to recurse.
+            :param value: Value to match.
             :param obj: LocalObject.
             :returns: True if matches, False otherwise.
             """
@@ -563,7 +563,6 @@ class LocalCollection():
 
             if isinstance( value, list ):
                 # value is list, check for inclusion
-
                 if isinstance( obj, list ):
                     # object is list, verfiy all values are in object
                     for item in value:
@@ -579,9 +578,28 @@ class LocalCollection():
                     # all items present
                     return True
 
+
                 else:
                     # object is not list, can not match
                     return False
+
+            elif isinstance( value, dict ):
+                # value is dictionary, search for operators
+                for op, val in value.items():
+                    if op == '$in':
+                        # inclusion operator
+                        if not isinstance( val, list ):
+                            raise TypeError( f'Invalid search criteria {op}: {val}' )
+
+                        if obj not in val:
+                            return False
+
+                    else:
+                        # not an operator
+                        raise TypeError( f'Invalid search operator {op}' )
+
+                # passed all operator checks
+                return True
 
             else:
                 # value is not list, check for direct match
@@ -735,7 +753,6 @@ class LocalDB():
     @property
     def assets( self ):
         return self.__assets
-
 
 
     def parse_path( self, path ):
