@@ -26,7 +26,7 @@ class LocalRunner( Runner ):
 
         :param db: Database to use.
         """
-        Runner.__init__( self )
+        super().__init__()
         self.db = db
 
         # register runner hooks
@@ -101,7 +101,7 @@ class LocalRunnerMultithread( RunnerMultithread ):
 
         :param db: Database to use.
         """
-        Runner.__init__( self )
+        super().__init__()
         self.db = db
 
         # register runner hooks

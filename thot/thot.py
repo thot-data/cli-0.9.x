@@ -171,8 +171,6 @@ class ThotProject( ThotInterface ):
         return ( 'THOT_CONTAINER_ID' not in os.environ )
 
 
-
-
     @staticmethod
     def _object_to_container( obj ):
         """
@@ -192,6 +190,7 @@ class ThotProject( ThotInterface ):
 
         container = Container( **container )
         return container
+
 
     # --- DEPRICATED ---
     # @staticmethod

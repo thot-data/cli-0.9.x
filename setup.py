@@ -18,7 +18,7 @@ project_urls = {
 
 setuptools.setup(
     name='thot-data',
-    version = '0.4.8',
+    version = '0.4.9',
     author='Brian Carlsen',
     author_email = 'carlsen.bri@gmail.com',
     description = 'Thot data analysis and management.',
@@ -30,7 +30,7 @@ setuptools.setup(
     classifiers = classifiers,
     
     install_requires = [
-        'thot-core>=0.4.8'
+        'thot-core>=0.4.9'
     ],
 
     package_data = {
