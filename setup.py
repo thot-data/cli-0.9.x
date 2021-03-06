@@ -18,7 +18,7 @@ project_urls = {
 
 setuptools.setup(
     name = 'thot-cli',
-    version = '0.4.10',
+    version = '0.5.0',
     author = 'Brian Carlsen',
     author_email = 'carlsen.bri@gmail.com',
     description = 'Command line interface for Thot data analysis and management.',
@@ -31,7 +31,7 @@ setuptools.setup(
 
     install_requires = [
         'thot-core>=0.4.9',
-        'thot-data>=0.4.10'
+        'thot-data>=0.5.0'
     ],
 
     package_data = {
