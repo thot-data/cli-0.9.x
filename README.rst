@@ -2,11 +2,13 @@
 Thot
 ####
 
-Data management and analysis.
+	Data management and analysis.
+
+Command line interface (CLI) of Thot to build, edit, and analyze your projects.
 
 .. code-block:: bash
 
-	python -m pip install thot-data
+	python -m pip install thot-cli
 
 .. note::
 	For full documentation go to `Read The Docs <https://thot-data-docs.readthedocs.io/en/latest/>`_.
